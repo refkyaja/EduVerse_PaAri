@@ -128,9 +128,7 @@ POST /api/kelas/{kelas}/materi-versi/{versi}/setuju      → approve versi (Owne
 POST /api/kelas/{kelas}/materi-versi/{versi}/tolak       → tolak versi, catatan wajib (Owner)
 
 GET  /api/kelas/{kelas}/soal                             → bank soal
-POST /api/kelas/{kelas}/soal                             → buat soal manual satu-satu (Admin & Owner)
-POST /api/kelas/{kelas}/soal/parse-teks                   → parse teks hasil AI jadi preview soal, belum disimpan (Admin & Owner)
-POST /api/kelas/{kelas}/soal/impor                        → simpan banyak soal sekaligus dari hasil preview parse-teks
+POST /api/kelas/{kelas}/soal                             → buat soal (Admin & Owner)
 PUT  /api/kelas/{kelas}/soal/{soal}                      → edit soal
 DELETE /api/kelas/{kelas}/soal/{soal}                    → hapus soal
 
@@ -167,15 +165,7 @@ GET  /api/kelas/{kelas}/leaderboard                      → leaderboard kelas b
 ### Kuis.jsx & KuisKerjakan.jsx
 - Daftar kuis (status aktif), halaman kerjain kuis (timer opsional, acak soal/opsi kalau diaktifkan)
 - Kuis bisa diulang; tiap percobaan disimpan biar riwayat pengerjaan tetap ada
-- Manajemen bank soal (buat/edit/hapus soal) buat Admin & Owner, dengan 2 mode input:
-  - **Manual**: form satu-satu (pertanyaan, jenis soal, opsi jawaban, jawaban benar, pembahasan)
-  - **Tempel Teks**: textarea buat paste hasil generate AI (Claude/ChatGPT/dst), tombol "Parse"
-    manggil `POST /soal/parse-teks` buat dapetin preview soal yang bisa diedit sebelum disimpan.
-    Format teks: nomor+titik+pertanyaan, opsi A/B/C/D per baris, baris "Jawaban: [huruf]",
-    opsional baris "Pembahasan: ...". Soal yang gagal ke-parse ditandain di preview, bukan
-    didiemin/dibuang. Setelah direview, submit ke `POST /soal/impor` buat simpen semuanya.
-  - Form kuis tidak punya field jadwal/hari — kuis dibuat kapan aja, gak terikat jadwal
-    mata pelajaran (EduVerse gak fokus ke sekolah, lihat README bagian Tujuan).
+- Manajemen bank soal (buat/edit/hapus soal) buat Admin & Owner
 
 ### Leaderboard.jsx
 - Peringkat anggota kelas berdasarkan XP, bukan skor mentah

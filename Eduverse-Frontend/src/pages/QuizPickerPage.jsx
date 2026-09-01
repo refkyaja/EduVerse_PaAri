@@ -4,13 +4,15 @@ import { ChevronRight, HelpCircle, BookOpen } from 'lucide-react';
 import ChapterModal from '../components/ChapterModal';
 import { useAppState } from '../context/AppStateContext';
 
-export default function QuizPickerPage() {
+export default function QuizPickerPage({ currentRole }) {
   const { classId } = useParams();
   const { findClass } = useAppState();
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
 
   const activeClass = classId && findClass ? findClass(classId) : null;
   const isDemoClass = !classId || classId === 'cls-101' || classId === 'cls-102' || classId === 'cls-103';
+  const effectiveRole = currentRole || activeClass?.role || (isDemoClass ? 'owner' : 'member');
+  const canManage = effectiveRole === 'owner' || effectiveRole === 'admin';
 
   const days = isDemoClass ? [
     {
@@ -95,15 +97,17 @@ export default function QuizPickerPage() {
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
             Owner atau Admin belum membuat kuis atau ujian harian untuk kelas ini.
           </p>
-          <div className="pt-2">
-            <Link
-              to={classId ? `/class/${classId}/profile` : "/profile"}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-2xl shadow-glow hover:scale-105 transition-all"
-            >
-              <span>Kelola &amp; Buat Kuis Baru</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
+          {canManage && (
+            <div className="pt-2">
+              <Link
+                to={classId ? `/class/${classId}/profile` : "/profile"}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-2xl shadow-glow hover:scale-105 transition-all"
+              >
+                <span>Kelola &amp; Buat Kuis Baru</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Settings, LogOut, User } from 'lucide-react';
+import { ArrowLeft, Settings, LogOut, User, Sun, Moon } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 import { INITIAL_CLASSES } from '../data/mockData';
 
 export default function TopBar() {
   const navigate = useNavigate();
-  const { currentUser, logoutUser, getClassXp, findClass } = useAppState();
+  const { currentUser, logoutUser, getClassXp, findClass, appState, toggleDarkMode } = useAppState();
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const location = useLocation();
   const currentPath = location.pathname;
@@ -101,13 +101,13 @@ export default function TopBar() {
               />
 
               {/* Profile Dropdown Menu */}
-              <div className="absolute right-0 mt-2 w-60 bg-card border border-border rounded-3xl p-3 shadow-2xl z-40 animate-scale-up space-y-2">
+              <div className="absolute right-0 mt-2 w-64 bg-card border border-border rounded-3xl p-3 shadow-2xl z-40 animate-scale-up space-y-2.5">
                 {/* User Header Info */}
                 <div className="flex items-center gap-3 p-2 bg-muted/40 rounded-2xl border border-border/50">
                   <img
                     src={userAvatar}
                     alt={currentUser?.name || "User Avatar"}
-                    className="w-10 h-10 rounded-full object-cover border border-primary/30 shrink-0"
+                    className="w-9 h-9 rounded-full object-cover border border-primary/30 shrink-0"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="font-extrabold text-xs text-foreground truncate">{currentUser?.name || "Refky Satria"}</p>
@@ -115,14 +115,45 @@ export default function TopBar() {
                   </div>
                 </div>
 
+                {/* Light mode / Dark mode Segmented Toggle (Below User Info) */}
+                <div className="bg-muted/80 border border-border/60 rounded-2xl p-1 flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      if (appState?.darkMode) toggleDarkMode();
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      !appState?.darkMode
+                        ? 'bg-card text-foreground font-extrabold shadow-sm border border-border/40'
+                        : 'text-muted-foreground font-bold hover:text-foreground'
+                    }`}
+                  >
+                    <Sun className="w-3.5 h-3.5 text-warning shrink-0" />
+                    <span>Light mode</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (!appState?.darkMode) toggleDarkMode();
+                    }}
+                    className={`flex-1 py-1.5 px-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      appState?.darkMode
+                        ? 'bg-card text-foreground font-extrabold shadow-sm border border-border/40'
+                        : 'text-muted-foreground font-bold hover:text-foreground'
+                    }`}
+                  >
+                    <Moon className="w-3.5 h-3.5 text-primary-glow shrink-0" />
+                    <span>Dark mode</span>
+                  </button>
+                </div>
+
                 {/* Actions */}
-                <div className="space-y-1 pt-1">
+                <div className="space-y-1 pt-1 border-t border-border/50">
                   <button
                     onClick={() => {
                       setIsProfileMenuOpen(false);
                       navigate('/settings');
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold hover:bg-primary/15 hover:text-primary transition-colors flex items-center gap-2.5 cursor-pointer"
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold hover:bg-primary/15 hover:text-primary transition-colors flex items-center gap-2.5 cursor-pointer"
                   >
                     <Settings className="w-4 h-4 text-primary shrink-0" />
                     <span>Settings</span>
@@ -130,10 +161,10 @@ export default function TopBar() {
 
                   <button
                     onClick={handleLogout}
-                    className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-danger hover:bg-danger/10 transition-colors flex items-center gap-2.5 cursor-pointer mt-1 border-t border-border/60 pt-2"
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-danger hover:bg-danger/10 transition-colors flex items-center gap-2.5 cursor-pointer"
                   >
                     <LogOut className="w-4 h-4 text-danger shrink-0" />
-                    <span>Logout</span>
+                    <span>Sign out</span>
                   </button>
                 </div>
               </div>

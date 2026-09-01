@@ -28,39 +28,39 @@ export default function ClassLeaderboardPage({ leaderboardData }) {
         </div>
       </div>
 
-      {/* Podium */}
-      <div className="bg-gradient-to-br from-primary via-primary to-primary-glow rounded-3xl p-6 text-primary-foreground shadow-glow relative overflow-hidden">
+      {/* Compact Podium */}
+      <div className="bg-gradient-to-br from-primary via-primary to-primary-glow rounded-2xl md:rounded-3xl p-3.5 sm:p-4 md:p-5 text-primary-foreground shadow-glow relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.25),transparent_60%)]"></div>
         <div className="relative grid grid-cols-3 gap-2 items-end">
           {/* Rank 2 */}
           <div className="flex flex-col items-center">
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 grid place-items-center font-extrabold text-lg">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 grid place-items-center font-extrabold text-xs sm:text-sm">
               {p2.name[0]}
             </div>
-            <p className="text-xs font-extrabold mt-2 text-center truncate w-full">{p2.name.split(' ')[0]}</p>
-            <p className="text-[10px] font-mono opacity-80">{p2.xp.toLocaleString()} XP</p>
-            <div className="h-20 w-full mt-2 bg-white/15 backdrop-blur-sm rounded-t-2xl border-t-2 border-white/30 grid place-items-center font-extrabold italic text-2xl">2</div>
+            <p className="text-[10px] sm:text-xs font-extrabold mt-1 text-center truncate w-full">{p2.name.split(' ')[0]}</p>
+            <p className="text-[9px] font-mono opacity-80">{p2.xp.toLocaleString()} XP</p>
+            <div className="h-12 sm:h-14 md:h-16 w-full mt-1.5 bg-white/15 backdrop-blur-sm rounded-t-xl sm:rounded-t-2xl border-t-2 border-white/30 grid place-items-center font-extrabold italic text-lg sm:text-xl">2</div>
           </div>
 
           {/* Rank 1 */}
-          <div className="flex flex-col items-center animate-bounce">
-            <Crown className="w-6 h-6 text-xp-gold fill-xp-gold mb-1 drop-shadow" />
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm border-2 border-xp-gold grid place-items-center font-extrabold text-lg">
+          <div className="flex flex-col items-center">
+            <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-xp-gold fill-xp-gold mb-0.5 drop-shadow" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/20 backdrop-blur-sm border-2 border-xp-gold grid place-items-center font-extrabold text-xs sm:text-sm">
               {p1.name[0]}
             </div>
-            <p className="text-xs font-extrabold mt-2 text-center truncate w-full">{p1.name.split(' ')[0]}</p>
-            <p className="text-[10px] font-mono opacity-80">{p1.xp.toLocaleString()} XP</p>
-            <div className="h-28 w-full mt-2 bg-white/15 backdrop-blur-sm rounded-t-2xl border-t-2 border-white/30 grid place-items-center font-extrabold italic text-2xl">1</div>
+            <p className="text-[10px] sm:text-xs font-extrabold mt-1 text-center truncate w-full">{p1.name.split(' ')[0]}</p>
+            <p className="text-[9px] font-mono opacity-80">{p1.xp.toLocaleString()} XP</p>
+            <div className="h-16 sm:h-20 md:h-24 w-full mt-1.5 bg-white/15 backdrop-blur-sm rounded-t-xl sm:rounded-t-2xl border-t-2 border-white/30 grid place-items-center font-extrabold italic text-lg sm:text-xl">1</div>
           </div>
 
           {/* Rank 3 */}
           <div className="flex flex-col items-center">
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 grid place-items-center font-extrabold text-lg">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/20 backdrop-blur-sm border-2 border-white/40 grid place-items-center font-extrabold text-xs sm:text-sm">
               {p3.name[0]}
             </div>
-            <p className="text-xs font-extrabold mt-2 text-center truncate w-full">{p3.name.split(' ')[0]}</p>
-            <p className="text-[10px] font-mono opacity-80">{p3.xp.toLocaleString()} XP</p>
-            <div className="h-16 w-full mt-2 bg-white/15 backdrop-blur-sm rounded-t-2xl border-t-2 border-white/30 grid place-items-center font-extrabold italic text-2xl">3</div>
+            <p className="text-[10px] sm:text-xs font-extrabold mt-1 text-center truncate w-full">{p3.name.split(' ')[0]}</p>
+            <p className="text-[9px] font-mono opacity-80">{p3.xp.toLocaleString()} XP</p>
+            <div className="h-9 sm:h-11 md:h-12 w-full mt-1.5 bg-white/15 backdrop-blur-sm rounded-t-xl sm:rounded-t-2xl border-t-2 border-white/30 grid place-items-center font-extrabold italic text-lg sm:text-xl">3</div>
           </div>
         </div>
       </div>

@@ -1,21 +1,53 @@
-import React, { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Settings, ChevronRight, ShieldCheck, Users, Swords, Flame, Trophy, Award, Zap, CheckCircle2, TrendingUp, AlertCircle, BookOpen, Target, Calendar, Plus, FolderPlus, FileText, Sparkles, RefreshCcw, History, Clock, UserCheck, KeyRound, Save, Trash2, ShieldAlert, BarChart3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Settings, ChevronRight, ChevronDown, ShieldCheck, Users, Swords, Flame, Trophy, Award, Zap, CheckCircle2, TrendingUp, AlertCircle, BookOpen, Target, Calendar, Plus, FolderPlus, FileText, Sparkles, RefreshCcw, History, Clock, UserCheck, KeyRound, Save, Trash2, ShieldAlert, BarChart3 } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 import { INITIAL_CLASSES } from '../data/mockData';
 import ClassSettingsModal from '../components/ClassSettingsModal';
 import ClassAnggotaPage from './ClassAnggotaPage';
+import { apiService } from '../services/apiService';
 
-export default function ProfilePage() {
+export default function ProfilePage({ initialTab }) {
   const { classId: routeClassId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { appState, userProfile, getLevelInfo, showToast, currentUser, findClass } = useAppState();
-  
+
+  const getTabFromPath = () => {
+    if (initialTab) return initialTab;
+    const path = location.pathname;
+    if (path.includes('/edit-info')) return 'settings';
+    if (path.includes('/add-subject')) return 'add_subject';
+    if (path.includes('/add-material')) return 'add_material';
+    if (path.includes('/add-quiz')) return 'add_quiz';
+    if (path.includes('/verification')) return 'verification';
+    if (path.includes('/members')) return 'members';
+    if (path.includes('/audit-log')) return 'audit_log';
+    return searchParams.get('tab') || 'overview';
+  };
+
   const classId = routeClassId || 'cls-101';
   const activeClass = findClass ? findClass(classId) : (INITIAL_CLASSES.find(c => c.id === classId) || INITIAL_CLASSES[0]);
   const isDemoClass = !routeClassId || routeClassId === 'cls-101' || routeClassId === 'cls-102' || routeClassId === 'cls-103';
 
   const [activeRole, setActiveRole] = useState('owner'); // owner, admin, member
-  const [activeTab, setActiveTab] = useState('overview'); // overview, settings, add_subject, add_material, add_quiz, verification, audit_log
+  const [activeTab, setActiveTab] = useState(getTabFromPath());
+  const [isManagementOpen, setIsManagementOpen] = useState(true);
+
+  useEffect(() => {
+    setActiveTab(getTabFromPath());
+  }, [location.pathname, searchParams, initialTab]);
+
+  const handleTabClick = (tabName, routePath) => {
+    setActiveTab(tabName);
+    const targetClass = routeClassId || 'cls-101';
+    if (routePath) {
+      navigate(`/class/${targetClass}/${routePath}`);
+    } else {
+      navigate(`/class/${targetClass}/profile`);
+    }
+  };
 
   // Class Info Edit State
   const [className, setClassName] = useState(activeClass?.name || 'Kelas Baru');
@@ -51,132 +83,209 @@ export default function ProfilePage() {
     { id: 1, user: currentUser?.name || 'Owner', role: 'Owner', action: `Membuat Ruang Kelas "${activeClass?.name || 'Kelas Baru'}"`, time: 'Baru saja' }
   ]);
 
-  const levelInfo = getLevelInfo(appState.xp);
-  const accuracy = appState.correctAnswers > 0
-    ? Math.round((appState.correctAnswers / (appState.examsCompleted * 5)) * 100)
-    : 78;
+  // Load backend log_aktivitas on mount if available
+  useEffect(() => {
+    if (!isDemoClass && routeClassId) {
+      apiService.getLogAktivitas(routeClassId)
+        .then(logs => {
+          if (Array.isArray(logs) && logs.length > 0) {
+            setAuditLogs(logs.map(l => ({
+              id: l.id,
+              user: l.user?.name || 'User',
+              role: l.peran_user || 'OWNER',
+              action: l.deskripsi_aksi,
+              time: new Date(l.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            })));
+          }
+        })
+        .catch(err => console.warn("Notice: Log aktivitas backend tidak dimuat:", err.message));
+    }
+  }, [isDemoClass, routeClassId]);
+
+  const displayXp = isDemoClass ? appState.xp : (currentUser?.xp || 0);
+  const levelInfo = getLevelInfo(displayXp);
+  const displayExams = isDemoClass ? appState.examsCompleted : 0;
+  const displayAccuracy = (displayExams > 0 && appState.correctAnswers > 0)
+    ? Math.round((appState.correctAnswers / (displayExams * 5)) * 100)
+    : 0;
+  const displayStreak = isDemoClass ? appState.streak : 0;
 
   const streakDays = [
-    { day: 'Sen', active: true },
-    { day: 'Sel', active: true },
-    { day: 'Rab', active: true },
-    { day: 'Kam', active: true },
-    { day: 'Jum', active: true },
-    { day: 'Sab', active: true },
-    { day: 'Ming', active: true },
+    { day: 'Sen', active: isDemoClass },
+    { day: 'Sel', active: isDemoClass },
+    { day: 'Rab', active: isDemoClass },
+    { day: 'Kam', active: isDemoClass },
+    { day: 'Jum', active: isDemoClass },
+    { day: 'Sab', active: isDemoClass },
+    { day: 'Ming', active: isDemoClass },
   ];
 
   const badges = [
-    { title: 'Master Matriks', desc: 'Selesaikan 10 Ujian Matriks', icon: Zap, color: 'text-warning bg-warning/15', unlocked: true },
-    { title: 'Kutu Buku', desc: 'Pelajari 20 Materi Belajar', icon: BookOpen, color: 'text-success bg-success/15', unlocked: true },
-    { title: 'Sniper Akademik', desc: 'Raih Skor 100% pada Ujian', icon: Target, color: 'text-brand-blue bg-brand-blue/15', unlocked: true },
+    { title: 'Master Matriks', desc: 'Selesaikan 10 Ujian Matriks', icon: Zap, color: 'text-warning bg-warning/15', unlocked: isDemoClass },
+    { title: 'Kutu Buku', desc: 'Pelajari 20 Materi Belajar', icon: BookOpen, color: 'text-success bg-success/15', unlocked: isDemoClass },
+    { title: 'Sniper Akademik', desc: 'Raih Skor 100% pada Ujian', icon: Target, color: 'text-brand-blue bg-brand-blue/15', unlocked: isDemoClass },
     { title: 'Serangan Fajar', desc: 'Belajar Sebelum Jam 6 Pagi', icon: Flame, color: 'text-rose-500 bg-rose-500/15', unlocked: false },
   ];
 
-  const recentActivity = [
+  const recentActivity = isDemoClass ? [
     { type: 'Ujian', title: 'Matematika - Matriks & Determinan', xp: '+120 XP', date: 'Hari Ini, 14:20', score: '90%' },
     { type: 'Materi', title: 'Bahasa Indonesia - Teks Multimodal', xp: '+30 XP', date: 'Kemarin, 19:45', score: 'Selesai' },
-    { type: 'Quest', title: 'Misi Harian: Math Wizard', xp: '+50 XP', date: 'Kemarin, 10:15', score: 'Klaim' },
-  ];
+  ] : [];
 
-  const handleSaveClassInfo = (e) => {
+  const topSubjects = isDemoClass ? [
+    { name: 'Matematika (Matriks)', accuracy: 96 },
+    { name: 'PABP', accuracy: 90 },
+  ] : [];
+
+  const weakSubjects = isDemoClass ? [
+    { name: 'Bahasa Inggris', accuracy: 65 },
+    { name: 'Cloud Computing', accuracy: 72 },
+  ] : [];
+
+  const handleSaveClassInfo = async (e) => {
     e.preventDefault();
-    const newLog = {
-      id: Date.now(),
-      user: 'Refky Satria',
-      role: activeRole.toUpperCase(),
-      action: `Memperbarui nama kelas menjadi "${className}"`,
-      time: 'Baru saja'
-    };
-    setAuditLogs([newLog, ...auditLogs]);
-    showToast("Informasi kelas berhasil diperbarui!");
-  };
-
-  const handleRegenCode = () => {
-    if (confirm("Apakah Anda yakin ingin membuat ulang kode kelas? Kode lama tidak akan berlaku lagi.")) {
-      const newC = Math.random().toString(36).substring(2, 8).toUpperCase();
-      setClassCode(newC);
+    try {
+      if (!isDemoClass && routeClassId) {
+        await apiService.updateClass(routeClassId, { name: className, description: classDesc });
+      }
       const newLog = {
         id: Date.now(),
-        user: 'Refky Satria',
-        role: 'OWNER',
-        action: `Membuat Ulang Kode Kelas menjadi "${newC}"`,
+        user: currentUser?.name || 'Refky Satria',
+        role: activeRole.toUpperCase(),
+        action: `Memperbarui nama kelas menjadi "${className}"`,
         time: 'Baru saja'
       };
       setAuditLogs([newLog, ...auditLogs]);
-      showToast(`Kode kelas baru dibuat: "${newC}"`);
+      showToast("Informasi kelas berhasil diperbarui!");
+    } catch (err) {
+      showToast(err.message || "Informasi kelas berhasil diperbarui!");
     }
   };
 
-  const handleCreateSubject = (e) => {
+  const handleRegenCode = async () => {
+    if (confirm("Apakah Anda yakin ingin membuat ulang kode kelas? Kode lama tidak akan berlaku lagi.")) {
+      try {
+        let newC = Math.random().toString(36).substring(2, 8).toUpperCase();
+        if (!isDemoClass && routeClassId) {
+          const res = await apiService.regenerateClassCode(routeClassId);
+          if (res?.code) newC = res.code;
+        }
+        setClassCode(newC);
+        const newLog = {
+          id: Date.now(),
+          user: currentUser?.name || 'Refky Satria',
+          role: 'OWNER',
+          action: `Membuat Ulang Kode Kelas menjadi "${newC}"`,
+          time: 'Baru saja'
+        };
+        setAuditLogs([newLog, ...auditLogs]);
+        showToast(`Kode kelas baru dibuat: "${newC}"`);
+      } catch (err) {
+        showToast(err.message || "Gagal meregenerasi kode kelas");
+      }
+    }
+  };
+
+  const handleCreateSubject = async (e) => {
     e.preventDefault();
     if (!newSubjectName.trim() || !newSubjectCode.trim()) return;
 
-    const newLog = {
-      id: Date.now(),
-      user: 'Refky Satria',
-      role: activeRole.toUpperCase(),
-      action: `Menambahkan Mata Pelajaran Baru "${newSubjectName}" (${newSubjectCode.toUpperCase()})`,
-      time: 'Baru saja'
-    };
+    try {
+      if (!isDemoClass && routeClassId) {
+        await apiService.createMapel(routeClassId, {
+          nama: newSubjectName,
+          kode: newSubjectCode,
+          warna: newSubjectGradient
+        });
+      }
+      const newLog = {
+        id: Date.now(),
+        user: currentUser?.name || 'Refky Satria',
+        role: activeRole.toUpperCase(),
+        action: `Menambahkan Mata Pelajaran Baru "${newSubjectName}" (${newSubjectCode.toUpperCase()})`,
+        time: 'Baru saja'
+      };
 
-    setAuditLogs([newLog, ...auditLogs]);
-    showToast(`Mata Pelajaran "${newSubjectName}" berhasil ditambahkan!`);
-    setNewSubjectName('');
-    setNewSubjectCode('');
-    setActiveTab('overview');
+      setAuditLogs([newLog, ...auditLogs]);
+      showToast(`Mata Pelajaran "${newSubjectName}" berhasil ditambahkan!`);
+      setNewSubjectName('');
+      setNewSubjectCode('');
+      setActiveTab('overview');
+    } catch (err) {
+      showToast(err.message || "Gagal menambahkan mata pelajaran");
+    }
   };
 
-  const handleCreateMaterial = (e) => {
+  const handleCreateMaterial = async (e) => {
     e.preventDefault();
     if (!newMaterialTitle.trim() || !newMaterialContent.trim()) return;
 
     const isOwner = activeRole === 'owner';
-    const newLog = {
-      id: Date.now(),
-      user: 'Refky Satria',
-      role: activeRole.toUpperCase(),
-      action: isOwner
-        ? `Membuat & menerbitkan materi "${newMaterialTitle}" (Terverifikasi)`
-        : `Mengajukan materi baru "${newMaterialTitle}" (Menunggu Verifikasi)`,
-      time: 'Baru saja'
-    };
+    try {
+      if (!isDemoClass && routeClassId) {
+        await apiService.createMateri(routeClassId, {
+          judul: newMaterialTitle,
+          isi: newMaterialContent
+        });
+      }
+      const newLog = {
+        id: Date.now(),
+        user: currentUser?.name || 'Refky Satria',
+        role: activeRole.toUpperCase(),
+        action: isOwner
+          ? `Membuat & menerbitkan materi "${newMaterialTitle}" (Terverifikasi)`
+          : `Mengajukan materi baru "${newMaterialTitle}" (Menunggu Verifikasi)`,
+        time: 'Baru saja'
+      };
 
-    setAuditLogs([newLog, ...auditLogs]);
-    showToast(
-      isOwner
-        ? `Materi "${newMaterialTitle}" berhasil dipublikasikan!`
-        : `Materi "${newMaterialTitle}" diajukan! Menunggu Verifikasi Owner.`
-    );
+      setAuditLogs([newLog, ...auditLogs]);
+      showToast(
+        isOwner
+          ? `Materi "${newMaterialTitle}" berhasil dipublikasikan!`
+          : `Materi "${newMaterialTitle}" diajukan! Menunggu Verifikasi Owner.`
+      );
 
-    setNewMaterialTitle('');
-    setNewMaterialContent('');
-    setActiveTab('overview');
+      setNewMaterialTitle('');
+      setNewMaterialContent('');
+      setActiveTab('overview');
+    } catch (err) {
+      showToast(err.message || "Gagal membuat materi");
+    }
   };
 
-  const handleCreateQuiz = (e) => {
+  const handleCreateQuiz = async (e) => {
     e.preventDefault();
     if (!newQuizTitle.trim()) return;
 
-    const newLog = {
-      id: Date.now(),
-      user: 'Refky Satria',
-      role: activeRole.toUpperCase(),
-      action: `Menerbitkan Kuis Baru "${newQuizTitle}" untuk hari ${newQuizDay}`,
-      time: 'Baru saja'
-    };
+    try {
+      if (!isDemoClass && routeClassId) {
+        await apiService.createKuis(routeClassId, {
+          judul: newQuizTitle,
+          deskripsi: `Kuis jadwal hari ${newQuizDay}`
+        });
+      }
+      const newLog = {
+        id: Date.now(),
+        user: currentUser?.name || 'Refky Satria',
+        role: activeRole.toUpperCase(),
+        action: `Menerbitkan Kuis Baru "${newQuizTitle}" untuk hari ${newQuizDay}`,
+        time: 'Baru saja'
+      };
 
-    setAuditLogs([newLog, ...auditLogs]);
-    showToast(`Kuis "${newQuizTitle}" berhasil diterbitkan pada hari ${newQuizDay}!`);
-    setNewQuizTitle('');
-    setActiveTab('overview');
+      setAuditLogs([newLog, ...auditLogs]);
+      showToast(`Kuis "${newQuizTitle}" berhasil diterbitkan pada hari ${newQuizDay}!`);
+      setNewQuizTitle('');
+      setActiveTab('overview');
+    } catch (err) {
+      showToast(err.message || "Gagal menerbitkan kuis");
+    }
   };
 
-  const handleApprovePending = (id, title) => {
+  const handleApprovePending = async (id, title) => {
     setPendingMaterials(prev => prev.filter(p => p.id !== id));
     const newLog = {
       id: Date.now(),
-      user: 'Refky Satria',
+      user: currentUser?.name || 'Refky Satria',
       role: 'OWNER',
       action: `Memverifikasi & menerbitkan materi "${title}"`,
       time: 'Baru saja'
@@ -185,11 +294,11 @@ export default function ProfilePage() {
     showToast(`Materi "${title}" berhasil diverifikasi & dipublikasikan!`);
   };
 
-  const handleRejectPending = (id, title) => {
+  const handleRejectPending = async (id, title) => {
     setPendingMaterials(prev => prev.filter(p => p.id !== id));
     const newLog = {
       id: Date.now(),
-      user: 'Refky Satria',
+      user: currentUser?.name || 'Refky Satria',
       role: 'OWNER',
       action: `Menolak pengajuan materi "${title}" untuk perbaikan`,
       time: 'Baru saja'
@@ -204,42 +313,62 @@ export default function ProfilePage() {
 
   return (
     <section className="px-4 md:px-8 pt-6 space-y-6 animate-fade-in flex flex-col max-w-7xl mx-auto w-full pb-24">
-      {/* Header Banner Identity */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-primary via-primary to-primary-glow rounded-3xl p-6 text-primary-foreground shadow-glow">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <img
-              src={currentUser?.profile_photo || currentUser?.avatar || currentUser?.photo_url || currentUser?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
-              alt="Profile Avatar"
-              className="w-16 h-16 rounded-full bg-white/20 outline outline-4 outline-white/30 object-cover shadow-lg"
-            />
-            <div className="absolute -bottom-1 -right-1 bg-xp-gold text-foreground w-6 h-6 rounded-full flex items-center justify-center font-extrabold text-[10px] shadow-md border-2 border-card">
-              👑
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-extrabold italic">
-                {currentUser ? `${currentUser.name} (@${currentUser.username})` : 'Refky Satria (EduQuest)'}
-              </h1>
-              <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-extrabold uppercase border border-white/30">
-                Role: {activeRole}
-              </span>
-            </div>
-            <p className="text-xs text-primary-foreground/90 mt-0.5">
-              {currentUser ? currentUser.email : `Kelas ${className} · SMKN 13 Bandung`}
-            </p>
-          </div>
+      {/* Header Banner Identity (Twitter/X Style Cover Banner & Round Profile - Ultra Flattened Mobile Landscape) */}
+      <div className="bg-card border border-border rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl">
+        {/* 1. Banner Belakang (Gambar Banner Custom EduVerse - Landscape Ultra Gepeng di Mobile) */}
+        <div className="relative w-full h-20 sm:h-32 md:h-48 bg-background select-none overflow-hidden">
+          <img
+            src="/assets/banner_eduverse2.png"
+            alt="Banner EduVerse"
+            className="w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10 pointer-events-none"></div>
         </div>
 
-        {/* Level Badge */}
-        <div className="bg-black/20 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 flex items-center gap-3 shrink-0">
-          <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-widest text-white/80">Pangkat Saat Ini</p>
-            <p className="text-sm font-extrabold italic text-xp-gold">Lv. {levelInfo.level} Master</p>
+        {/* 2. Area Bawah (Foto Profil Bulat, Nama, Centang Emas & Badges) */}
+        <div className="px-3.5 sm:px-6 pb-3.5 sm:pb-6 pt-0 relative bg-card">
+          <div className="flex flex-wrap items-end justify-between gap-2.5 sm:gap-4">
+            {/* FOTO PROFIL BULAT (Menggunakan <img> asli bulat sempurna menumpuk di atas banner) */}
+            <div className="relative -mt-8 sm:-mt-12 md:-mt-18 z-20 shrink-0">
+              <img 
+                src={currentUser?.profile_photo || currentUser?.avatar || currentUser?.photo_url || currentUser?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400'} 
+                alt="Foto Profil" 
+                className="w-16 h-16 sm:w-24 sm:h-24 md:w-34 md:h-34 rounded-full object-cover border-4 border-card bg-muted shadow-2xl block hover:opacity-95 transition cursor-pointer"
+              />
+              <div className="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 bg-gradient-to-br from-amber-300 via-xp-gold to-amber-500 text-black w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-extrabold text-[9px] sm:text-xs shadow-lg border-2 border-card shrink-0">
+                👑
+              </div>
+            </div>
+
+            {/* Badges Role & Pangkat Level di Sebelah Kanan */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 pt-1">
+              <span className="px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-primary/10 text-primary text-[8px] sm:text-xs font-extrabold uppercase tracking-wider border border-primary/20 shrink-0">
+                ROLE: {activeRole}
+              </span>
+              <div className="bg-background border border-border px-2.5 py-1 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl flex items-center gap-2 sm:gap-3 shadow-sm shrink-0">
+                <div>
+                  <p className="text-[7px] sm:text-[9px] font-extrabold uppercase tracking-widest text-muted-foreground leading-none">Pangkat Saat Ini</p>
+                  <p className="text-[10px] sm:text-sm font-extrabold italic text-xp-gold mt-0.5">
+                    Lv. {levelInfo.level} {levelInfo.level > 10 ? 'Master' : 'Pemula'}
+                  </p>
+                </div>
+                <div className="w-6 h-6 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-gradient-to-br from-amber-300 via-xp-gold to-amber-500 text-black flex items-center justify-center font-extrabold text-[10px] sm:text-sm shadow-md border border-white/40 shrink-0">
+                  {levelInfo.level}
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-xp-gold text-black flex items-center justify-center font-extrabold text-sm shadow-md">
-            {levelInfo.level}
+
+          {/* Nama Akun & Username (Tanpa Email) */}
+          <div className="mt-3 space-y-0.5">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-foreground tracking-tight leading-tight">
+              {currentUser?.name || 'Refky Satria'}
+            </h1>
+            {currentUser?.username && (
+              <p className="text-muted-foreground text-xs sm:text-sm font-semibold">
+                @{currentUser.username}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -250,39 +379,7 @@ export default function ProfilePage() {
         {/* LEFT SIDEBAR NAVIGATION MENU */}
         <div className="md:col-span-4 lg:col-span-3 space-y-4 md:sticky md:top-20">
           
-          {/* Simulated Role Toggle Widget */}
-          <div className="bg-card border border-border rounded-2xl p-3 space-y-2 shadow-sm">
-            <span className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider block">Simulasi Role Kelas</span>
-            <div className="flex flex-col gap-1">
-              <button
-                onClick={() => setActiveRole('owner')}
-                className={`w-full py-1.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
-                  activeRole === 'owner' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                <span>🛡️ Owner Mode</span>
-                {activeRole === 'owner' && <span>✓</span>}
-              </button>
-              <button
-                onClick={() => setActiveRole('admin')}
-                className={`w-full py-1.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
-                  activeRole === 'admin' ? 'bg-brand-blue text-white shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                <span>👤 Admin Mode</span>
-                {activeRole === 'admin' && <span>✓</span>}
-              </button>
-              <button
-                onClick={() => setActiveRole('member')}
-                className={`w-full py-1.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
-                  activeRole === 'member' ? 'bg-success text-white shadow-sm' : 'bg-background hover:bg-muted text-muted-foreground'
-                }`}
-              >
-                <span>🎓 Member Mode</span>
-                {activeRole === 'member' && <span>✓</span>}
-              </button>
-            </div>
-          </div>
+
 
           {/* DYNAMIC SIDEBAR MENU */}
           <div className="bg-card border border-border rounded-3xl p-3 shadow-sm space-y-1">
@@ -292,7 +389,7 @@ export default function ProfilePage() {
 
             {/* Menu 1: Ringkasan & Statistik */}
             <button
-              onClick={() => setActiveTab('overview')}
+              onClick={() => handleTabClick('overview', '')}
               className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
                 activeTab === 'overview'
                   ? 'bg-primary text-primary-foreground shadow-md'
@@ -305,106 +402,114 @@ export default function ProfilePage() {
 
             {/* Owner & Admin Management Menu List */}
             {canManage && (
-              <>
-                <div className="pt-2 pb-1 px-3 border-t border-border">
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary">
+              <div className="space-y-1">
+                <button
+                  onClick={() => setIsManagementOpen(!isManagementOpen)}
+                  className="w-full pt-3 pb-1 px-3 border-t border-border flex items-center justify-between cursor-pointer group text-left"
+                >
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary group-hover:opacity-90">
                     {isOwner ? 'Manajemen Owner' : 'Manajemen Admin'}
                   </span>
-                </div>
-
-                {isOwner && (
-                  <button
-                    onClick={() => setActiveTab('settings')}
-                    className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
-                      activeTab === 'settings'
-                        ? 'bg-primary text-primary-foreground shadow-md'
-                        : 'bg-background hover:bg-muted text-foreground'
-                    }`}
-                  >
-                    <Settings className="w-4 h-4 shrink-0" />
-                    <span className="flex-1">Edit Info &amp; Kode Kelas</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => setActiveTab('add_subject')}
-                  className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
-                    activeTab === 'add_subject'
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-background hover:bg-muted text-foreground'
-                  }`}
-                >
-                  <FolderPlus className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">+ Tambah Mapel Baru</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-primary transition-transform duration-200 ${isManagementOpen ? 'rotate-180' : 'rotate-0'}`} />
                 </button>
 
-                <button
-                  onClick={() => setActiveTab('add_material')}
-                  className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
-                    activeTab === 'add_material'
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-background hover:bg-muted text-foreground'
-                  }`}
-                >
-                  <FileText className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">+ Tambah Materi</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('add_quiz')}
-                  className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
-                    activeTab === 'add_quiz'
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-background hover:bg-muted text-foreground'
-                  }`}
-                >
-                  <Swords className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">+ Tambah Kuis / Ujian</span>
-                </button>
-
-                {isOwner && (
-                  <button
-                    onClick={() => setActiveTab('verification')}
-                    className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
-                      activeTab === 'verification'
-                        ? 'bg-primary text-primary-foreground shadow-md'
-                        : 'bg-background hover:bg-muted text-foreground'
-                    }`}
-                  >
-                    <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span className="flex-1">Verifikasi Materi Admin</span>
-                    {pendingMaterials.length > 0 && (
-                      <span className="bg-warning text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-                        {pendingMaterials.length}
-                      </span>
+                {isManagementOpen && (
+                  <div className="space-y-1 animate-fade-in">
+                    {isOwner && (
+                      <button
+                        onClick={() => handleTabClick('settings', 'edit-info')}
+                        className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                          activeTab === 'settings'
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'bg-background hover:bg-muted text-foreground'
+                        }`}
+                      >
+                        <Settings className="w-4 h-4 shrink-0" />
+                        <span className="flex-1">Edit Info &amp; Kode Kelas</span>
+                      </button>
                     )}
-                  </button>
+
+                    <button
+                      onClick={() => handleTabClick('add_subject', 'add-subject')}
+                      className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                        activeTab === 'add_subject'
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      <FolderPlus className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">Tambah Mapel Baru</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleTabClick('add_material', 'add-material')}
+                      className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                        activeTab === 'add_material'
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      <FileText className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">Tambah Materi</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleTabClick('add_quiz', 'add-quiz')}
+                      className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                        activeTab === 'add_quiz'
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      <Swords className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">Tambah Kuis / Ujian</span>
+                    </button>
+
+                    {isOwner && (
+                      <button
+                        onClick={() => handleTabClick('verification', 'verification')}
+                        className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                          activeTab === 'verification'
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'bg-background hover:bg-muted text-foreground'
+                        }`}
+                      >
+                        <ShieldCheck className="w-4 h-4 shrink-0" />
+                        <span className="flex-1">Verifikasi Materi Admin</span>
+                        {pendingMaterials.length > 0 && (
+                          <span className="bg-warning text-black text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                            {pendingMaterials.length}
+                          </span>
+                        )}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleTabClick('members', 'members')}
+                      className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                        activeTab === 'members'
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      <Users className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">Kelola Admin &amp; Anggota</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleTabClick('audit_log', 'audit-log')}
+                      className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                        activeTab === 'audit_log'
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'bg-background hover:bg-muted text-foreground'
+                      }`}
+                    >
+                      <History className="w-4 h-4 shrink-0" />
+                      <span className="flex-1">Riwayat Perubahan Log</span>
+                    </button>
+                  </div>
                 )}
-
-                <button
-                  onClick={() => setActiveTab('members')}
-                  className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
-                    activeTab === 'members'
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-background hover:bg-muted text-foreground'
-                  }`}
-                >
-                  <Users className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">Kelola Admin &amp; Anggota</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('audit_log')}
-                  className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
-                    activeTab === 'audit_log'
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'bg-background hover:bg-muted text-foreground'
-                  }`}
-                >
-                  <History className="w-4 h-4 shrink-0" />
-                  <span className="flex-1">Riwayat Perubahan Log</span>
-                </button>
-              </>
+              </div>
             )}
           </div>
         </div>
@@ -418,20 +523,20 @@ export default function ProfilePage() {
               {/* 4 Quick Stats Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
                 <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center">
-                  <p className="text-2xl font-extrabold italic tabular-nums text-foreground">{appState.xp.toLocaleString()}</p>
+                  <p className="text-2xl font-extrabold italic tabular-nums text-foreground">{displayXp.toLocaleString()}</p>
                   <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider mt-1">Total XP</p>
                 </div>
                 <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center">
-                  <p className="text-2xl font-extrabold italic tabular-nums text-foreground">{appState.examsCompleted}</p>
+                  <p className="text-2xl font-extrabold italic tabular-nums text-foreground">{displayExams}</p>
                   <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider mt-1">Ujian Selesai</p>
                 </div>
                 <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center">
-                  <p className="text-2xl font-extrabold italic tabular-nums text-foreground">{accuracy}%</p>
+                  <p className="text-2xl font-extrabold italic tabular-nums text-foreground">{displayAccuracy}%</p>
                   <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider mt-1">Akurasi Jawaban</p>
                 </div>
                 <div className="bg-card border border-border rounded-2xl p-4 shadow-sm text-center">
                   <p className="text-2xl font-extrabold italic tabular-nums text-foreground flex items-center justify-center gap-1">
-                    🔥 {appState.streak}
+                    🔥 {displayStreak}
                   </p>
                   <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider mt-1">Streak Hari Ini</p>
                 </div>
@@ -443,7 +548,7 @@ export default function ProfilePage() {
                   <h3 className="font-extrabold text-base flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" /> Tracking Belajar Mingguan
                   </h3>
-                  <span className="text-xs text-muted-foreground font-bold">🔥 {appState.streak} Hari Berturut-turut</span>
+                  <span className="text-xs text-muted-foreground font-bold">🔥 {displayStreak} Hari Berturut-turut</span>
                 </div>
                 <div className="grid grid-cols-7 gap-2 text-center pt-1">
                   {streakDays.map((s, idx) => (
@@ -469,24 +574,21 @@ export default function ProfilePage() {
                     <h4 className="font-extrabold text-sm">Mata Pelajaran Terkuat</h4>
                   </div>
                   <div className="space-y-2">
-                    <div>
-                      <div className="flex justify-between text-xs font-bold mb-1">
-                        <span>Matematika (Matriks)</span>
-                        <span className="text-success">96% Akurasi</span>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-success rounded-full" style={{ width: '96%' }}></div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs font-bold mb-1">
-                        <span>PABP</span>
-                        <span className="text-success">90% Akurasi</span>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-success rounded-full" style={{ width: '90%' }}></div>
-                      </div>
-                    </div>
+                    {topSubjects.length > 0 ? (
+                      topSubjects.map((sub, idx) => (
+                        <div key={idx}>
+                          <div className="flex justify-between text-xs font-bold mb-1">
+                            <span>{sub.name}</span>
+                            <span className="text-success">{sub.accuracy}% Akurasi</span>
+                          </div>
+                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-success rounded-full" style={{ width: `${sub.accuracy}%` }}></div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic py-2">Belum ada analisis mata pelajaran terkuat.</p>
+                    )}
                   </div>
                 </div>
 
@@ -496,24 +598,21 @@ export default function ProfilePage() {
                     <h4 className="font-extrabold text-sm">Perlu Ditingkatkan</h4>
                   </div>
                   <div className="space-y-2">
-                    <div>
-                      <div className="flex justify-between text-xs font-bold mb-1">
-                        <span>Bahasa Inggris</span>
-                        <span className="text-warning">65% Akurasi</span>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-warning rounded-full" style={{ width: '65%' }}></div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs font-bold mb-1">
-                        <span>Cloud Computing</span>
-                        <span className="text-warning">72% Akurasi</span>
-                      </div>
-                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-warning rounded-full" style={{ width: '72%' }}></div>
-                      </div>
-                    </div>
+                    {weakSubjects.length > 0 ? (
+                      weakSubjects.map((sub, idx) => (
+                        <div key={idx}>
+                          <div className="flex justify-between text-xs font-bold mb-1">
+                            <span>{sub.name}</span>
+                            <span className="text-warning">{sub.accuracy}% Akurasi</span>
+                          </div>
+                          <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-full bg-warning rounded-full" style={{ width: `${sub.accuracy}%` }}></div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic py-2">Belum ada data mata pelajaran yang perlu ditingkatkan.</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -701,12 +800,12 @@ export default function ProfilePage() {
                   <select
                     value={newMaterialSubject}
                     onChange={(e) => setNewMaterialSubject(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+                    className="w-full bg-background text-foreground border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-primary cursor-pointer shadow-sm"
                   >
-                    <option value="PWP">PWP (Pemrograman Web)</option>
-                    <option value="IND">Bahasa Indonesia</option>
-                    <option value="MTK">Matematika</option>
-                    <option value="PPAN">Pendidikan Pancasila</option>
+                    <option value="PWP" className="bg-card text-foreground font-medium text-xs py-1">PWP (Pemrograman Web)</option>
+                    <option value="IND" className="bg-card text-foreground font-medium text-xs py-1">Bahasa Indonesia</option>
+                    <option value="MTK" className="bg-card text-foreground font-medium text-xs py-1">Matematika</option>
+                    <option value="PPAN" className="bg-card text-foreground font-medium text-xs py-1">Pendidikan Pancasila</option>
                   </select>
                 </div>
 
@@ -774,13 +873,13 @@ export default function ProfilePage() {
                   <select
                     value={newQuizDay}
                     onChange={(e) => setNewQuizDay(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+                    className="w-full bg-background text-foreground border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-primary cursor-pointer shadow-sm"
                   >
-                    <option value="Senin">Senin</option>
-                    <option value="Selasa">Selasa</option>
-                    <option value="Rabu">Rabu</option>
-                    <option value="Kamis">Kamis</option>
-                    <option value="Jumat">Jumat</option>
+                    <option value="Senin" className="bg-card text-foreground font-medium text-xs py-1">Senin</option>
+                    <option value="Selasa" className="bg-card text-foreground font-medium text-xs py-1">Selasa</option>
+                    <option value="Rabu" className="bg-card text-foreground font-medium text-xs py-1">Rabu</option>
+                    <option value="Kamis" className="bg-card text-foreground font-medium text-xs py-1">Kamis</option>
+                    <option value="Jumat" className="bg-card text-foreground font-medium text-xs py-1">Jumat</option>
                   </select>
                 </div>
               </div>

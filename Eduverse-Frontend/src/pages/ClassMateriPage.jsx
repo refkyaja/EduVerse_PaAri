@@ -169,8 +169,8 @@ export default function ClassMateriPage({ cls, materials, currentRole, onCreateM
             })}
           </div>
         ) : (
-          <div className="bg-card border border-border rounded-3xl p-8 text-center text-muted-foreground text-xs">
-            Belum ada materi di kelas ini.
+          <div className="bg-card border border-border rounded-3xl p-8 text-center text-muted-foreground text-xs font-bold">
+            Tidak ada pelajaran
           </div>
         )}
       </div>

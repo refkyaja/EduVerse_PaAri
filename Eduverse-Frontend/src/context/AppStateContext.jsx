@@ -9,11 +9,6 @@ const INITIAL_STATE = {
   streak: 7,
   examsCompleted: 42,
   correctAnswers: 0,
-  quests: [
-    { id: 'math',   title: "Math Wizard",       desc: "Selesaikan 10 soal Matriks",          xp: 50, done: false, icon: 'calculator', color: 'text-warning bg-warning/10' },
-    { id: 'book',   title: "Kutu Buku",          desc: "Pelajari 1 materi baru hari ini",     xp: 30, done: true,  icon: 'book-open',  color: 'text-success bg-success/10' },
-    { id: 'sniper', title: "Sniper Akademik",    desc: "Raih skor 80+ di ujian apa pun",      xp: 80, done: false, icon: 'target',     color: 'text-brand-blue bg-brand-blue/10' }
-  ],
   powerUps: { hint: 3, shield: 2, freeze: 1, combo: 5 },
   darkMode: false
 };
@@ -87,20 +82,6 @@ export function AppStateProvider({ children }) {
     setTimeout(() => {
       setToastMessage(null);
     }, 2300);
-  };
-
-  const completeQuest = (questId) => {
-    setAppState(prev => {
-      const targetQuest = prev.quests.find(q => q.id === questId);
-      if (!targetQuest || targetQuest.done) return prev;
-      
-      const newQuests = prev.quests.map(q => 
-        q.id === questId ? { ...q, done: true } : q
-      );
-      const newXp = prev.xp + targetQuest.xp;
-      showToast(`Quest Selesai! Dapatkan +${targetQuest.xp} XP`);
-      return { ...prev, xp: newXp, quests: newQuests };
-    });
   };
 
   const recordExamResult = (earnedXp, correctCount, totalQuestions) => {
@@ -234,7 +215,6 @@ export function AppStateProvider({ children }) {
       toggleDarkMode,
       showToast,
       toastMessage,
-      completeQuest,
       recordExamResult,
       getLevelInfo
     }}>

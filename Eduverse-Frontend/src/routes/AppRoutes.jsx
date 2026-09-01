@@ -91,7 +91,7 @@ export default function AppRoutes({
         element={
           <ProtectedRoute>
             <MobileLayout>
-              <MateriPage />
+              <MateriPage currentRole={user?.activeRole} />
             </MobileLayout>
           </ProtectedRoute>
         }
@@ -103,7 +103,7 @@ export default function AppRoutes({
         element={
           <ProtectedRoute>
             <MobileLayout>
-              <QuizPickerPage />
+              <QuizPickerPage currentRole={user?.activeRole} />
             </MobileLayout>
           </ProtectedRoute>
         }
@@ -140,7 +140,7 @@ export default function AppRoutes({
         element={
           <ProtectedRoute>
             <MobileLayout>
-              <MateriPage />
+              <MateriPage currentRole={user?.activeRole} />
             </MobileLayout>
           </ProtectedRoute>
         }
@@ -191,6 +191,76 @@ export default function AppRoutes({
           <ProtectedRoute>
             <MobileLayout>
               <ProfilePage />
+            </MobileLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/class/:classId/edit-info"
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ProfilePage initialTab="settings" />
+            </MobileLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/class/:classId/add-subject"
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ProfilePage initialTab="add_subject" />
+            </MobileLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/class/:classId/add-material"
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ProfilePage initialTab="add_material" />
+            </MobileLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/class/:classId/add-quiz"
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ProfilePage initialTab="add_quiz" />
+            </MobileLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/class/:classId/verification"
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ProfilePage initialTab="verification" />
+            </MobileLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/class/:classId/members"
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ProfilePage initialTab="members" />
+            </MobileLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/class/:classId/audit-log"
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ProfilePage initialTab="audit_log" />
             </MobileLayout>
           </ProtectedRoute>
         }

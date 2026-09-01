@@ -84,7 +84,7 @@ export default function PowerUpModal({ isOpen, onClose }) {
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-full md:max-w-xl bg-card rounded-t-3xl md:rounded-3xl z-[60] flex flex-col max-h-[88vh] overflow-hidden shadow-2xl border border-border animate-scale-in transition-all duration-300">
+      <div className="relative w-full max-w-full md:max-w-xl bg-card rounded-t-3xl md:rounded-3xl z-[60] flex flex-col max-h-[88vh] overflow-hidden shadow-2xl border border-border animate-slide-up-bottom md:animate-scale-in transition-all duration-300">
         {/* Handle bar (mobile drag to expand) */}
         <div
           ref={handleRef}

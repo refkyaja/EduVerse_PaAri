@@ -67,7 +67,7 @@ class ClassController extends Controller
     /**
      * Display the specified class details.
      */
-    public function show(Request $request, int $id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         $class = ClassModel::with('owner', 'classMembers')->find($id);
 
@@ -138,7 +138,7 @@ class ClassController extends Controller
     /**
      * Regenerate class code (Owner only).
      */
-    public function regenerateCode(Request $request, int $id): JsonResponse
+    public function regenerateCode(Request $request, $id): JsonResponse
     {
         $class = ClassModel::find($id);
 
@@ -171,7 +171,7 @@ class ClassController extends Controller
     /**
      * Update class information (Owner only).
      */
-    public function update(UpdateClassRequest $request, int $id): JsonResponse
+    public function update(UpdateClassRequest $request, $id): JsonResponse
     {
         $class = ClassModel::find($id);
 
@@ -201,7 +201,7 @@ class ClassController extends Controller
     /**
      * Delete a class (Owner only).
      */
-    public function destroy(Request $request, int $id): JsonResponse
+    public function destroy(Request $request, $id): JsonResponse
     {
         $class = ClassModel::find($id);
 

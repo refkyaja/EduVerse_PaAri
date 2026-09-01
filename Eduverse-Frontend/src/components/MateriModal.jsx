@@ -99,7 +99,7 @@ export default function MateriModal({ materiId, onClose }) {
 
   const modalClass = isMaximized
     ? "fixed inset-0 w-full h-full max-w-none max-h-none rounded-none z-[60] bg-card flex flex-col overflow-hidden shadow-2xl transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]"
-    : "fixed bottom-0 left-0 right-0 w-full md:bottom-auto md:top-1/2 md:left-1/2 md:right-auto md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-2xl lg:max-w-3xl bg-card rounded-t-3xl md:rounded-3xl z-[60] flex flex-col max-h-[88vh] overflow-hidden shadow-2xl border border-border transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]";
+    : "fixed bottom-0 left-0 right-0 w-full md:bottom-auto md:top-1/2 md:left-1/2 md:right-auto md:-translate-x-1/2 md:-translate-y-1/2 md:max-w-2xl lg:max-w-3xl bg-card rounded-t-3xl md:rounded-3xl z-[60] flex flex-col max-h-[88vh] overflow-hidden shadow-2xl border border-border animate-slide-up-bottom md:animate-scale-in transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]";
 
   return createPortal(
     <>

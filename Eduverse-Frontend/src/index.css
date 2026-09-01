@@ -85,6 +85,10 @@
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes slide-up-bottom {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(178, 59, 231, 0.4); }
   50%       { box-shadow: 0 0 30px 4px rgba(178, 59, 231, 0.2); }
@@ -98,6 +102,7 @@
 .animate-fade-in   { animation: fade-in   0.4s ease-out forwards; }
 .animate-scale-in  { animation: scale-in  0.2s ease-out forwards; }
 .animate-slide-up  { animation: slide-up  0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-slide-up-bottom { animation: slide-up-bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 .animate-pulse-glow{ animation: pulse-glow 2s ease-in-out infinite; }
 .animate-float     { animation: float      4s ease-in-out infinite; }
 
@@ -129,3 +134,25 @@ body {
 ::-webkit-scrollbar-track  { background: transparent; }
 ::-webkit-scrollbar-thumb  { background: rgba(var(--muted-foreground), 0.3); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(var(--muted-foreground), 0.5); }
+
+/* =========================================
+   Custom Select Option Dropdown Overrides
+   ========================================= */
+select {
+  color-scheme: dark light;
+}
+
+select option {
+  background-color: #181825;
+  color: #f8fafc;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
+.light select option {
+  background-color: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+

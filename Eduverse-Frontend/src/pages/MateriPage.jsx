@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BookOpen, Layers, Clock, Award, BookOpenCheck, ChevronRight } from 'lucide-react';
+import { BookOpen, Library, BookOpenCheck, ChevronRight } from 'lucide-react';
 import MateriModal from '../components/MateriModal';
 import VerificationBadge from '../components/VerificationBadge';
 import MaterialVersionDropdown from '../components/MaterialVersionDropdown';
 import { useAppState } from '../context/AppStateContext';
 
-export default function MateriPage() {
+export default function MateriPage({ currentRole }) {
   const { classId } = useParams();
   const { findClass } = useAppState();
   const [selectedMateriId, setSelectedMateriId] = useState(null);
 
   const activeClass = classId && findClass ? findClass(classId) : null;
   const isDemoClass = !classId || classId === 'cls-101' || classId === 'cls-102' || classId === 'cls-103';
+  const effectiveRole = currentRole || activeClass?.role || (isDemoClass ? 'owner' : 'member');
+  const canManage = effectiveRole === 'owner' || effectiveRole === 'admin';
 
   const subjects = isDemoClass ? [
     {
@@ -61,61 +63,43 @@ export default function MateriPage() {
     },
   ] : [];
 
+  const totalMaterials = subjects.reduce((acc, s) => acc + (s.chapters?.length || 0), 0);
+
   return (
     <section className="px-4 md:px-8 pt-6 space-y-6 animate-fade-in flex flex-col max-w-7xl mx-auto w-full pb-24">
       {/* Header Title Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-card via-card to-primary/10 border border-border rounded-3xl p-6 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/30 grid place-items-center text-primary shrink-0 shadow-sm">
-            <BookOpenCheck className="w-7 h-7" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 bg-gradient-to-r from-card via-card to-primary/10 border border-border rounded-2xl md:rounded-3xl p-3.5 sm:p-4 md:p-6 shadow-sm">
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-2xl bg-primary/10 border border-primary/30 grid place-items-center text-primary shrink-0 shadow-sm">
+            <BookOpenCheck className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7" />
           </div>
           <div>
-            <span className="px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-extrabold uppercase tracking-widest border border-primary/20">Pusat Pembelajaran</span>
-            <h1 className="text-2xl md:text-3xl font-extrabold italic tracking-tight text-foreground mt-0.5">Materi Belajar</h1>
-            <p className="text-xs md:text-sm text-muted-foreground mt-0.5">Ringkasan ringkas + flashcard interaktif otomatis di setiap bab.</p>
+            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] sm:text-[10px] font-extrabold uppercase tracking-widest border border-primary/20">Pusat Pembelajaran</span>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tracking-tight text-foreground mt-0.5 leading-tight">Materi Belajar</h1>
+            <p className="text-[11px] sm:text-xs md:text-sm text-muted-foreground mt-0.5 leading-tight">Rangkuman terstruktur &amp; materi pembelajaran interaktif per mata pelajaran.</p>
           </div>
         </div>
       </div>
 
-      {/* 4 Metrics Showcase Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <div className="bg-card border border-border hover:border-primary/40 rounded-2xl p-4 shadow-sm transition-all flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 grid place-items-center text-primary shrink-0">
-            <BookOpen className="w-5 h-5" />
+      {/* 2 Metrics Showcase Grid - 2 columns side-by-side even on mobile */}
+      <div className="grid grid-cols-2 gap-3 md:gap-4 items-stretch">
+        <div className="bg-card border border-border hover:border-primary/40 rounded-2xl md:rounded-3xl p-3.5 sm:p-4 md:p-5 shadow-sm transition-all flex items-center gap-3 md:gap-4 group min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/30 grid place-items-center text-primary shrink-0 group-hover:scale-110 transition-transform">
+            <Library className="w-4.5 h-4.5 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </div>
-          <div>
-            <p className="text-2xl font-extrabold italic tabular-nums text-foreground">24</p>
-            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Materi Dibaca</p>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border hover:border-primary/40 rounded-2xl p-4 shadow-sm transition-all flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-brand-blue/10 border border-brand-blue/30 grid place-items-center text-brand-blue shrink-0">
-            <Layers className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-2xl font-extrabold italic tabular-nums text-foreground">128</p>
-            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Flashcard Aktif</p>
+          <div className="min-w-0">
+            <p className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tabular-nums text-foreground tracking-tight leading-none">{subjects.length}</p>
+            <p className="text-[9px] sm:text-[10px] md:text-xs font-extrabold text-muted-foreground uppercase tracking-wider mt-1 leading-tight truncate">Mata Pelajaran</p>
           </div>
         </div>
 
-        <div className="bg-card border border-border hover:border-primary/40 rounded-2xl p-4 shadow-sm transition-all flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-warning/10 border border-warning/30 grid place-items-center text-warning shrink-0">
-            <Clock className="w-5 h-5" />
+        <div className="bg-card border border-border hover:border-primary/40 rounded-2xl md:rounded-3xl p-3.5 sm:p-4 md:p-5 shadow-sm transition-all flex items-center gap-3 md:gap-4 group min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-xl sm:rounded-2xl bg-brand-blue/10 border border-brand-blue/30 grid place-items-center text-brand-blue shrink-0 group-hover:scale-110 transition-transform">
+            <BookOpen className="w-4.5 h-4.5 sm:w-5 sm:h-5 md:w-6 md:h-6" />
           </div>
-          <div>
-            <p className="text-2xl font-extrabold italic tabular-nums text-foreground">4.5h</p>
-            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Total Waktu Baca</p>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border hover:border-primary/40 rounded-2xl p-4 shadow-sm transition-all flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 grid place-items-center text-emerald-500 shrink-0">
-            <Award className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-2xl font-extrabold italic tabular-nums text-foreground">92%</p>
-            <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">Tingkat Pemahaman</p>
+          <div className="min-w-0">
+            <p className="text-xl sm:text-2xl md:text-3xl font-extrabold italic tabular-nums text-foreground tracking-tight leading-none">{totalMaterials}</p>
+            <p className="text-[9px] sm:text-[10px] md:text-xs font-extrabold text-muted-foreground uppercase tracking-wider mt-1 leading-tight truncate">Total Materi Belajar</p>
           </div>
         </div>
       </div>
@@ -173,15 +157,17 @@ export default function MateriPage() {
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
             Owner atau Admin belum menambahkan materi pelajaran untuk kelas ini.
           </p>
-          <div className="pt-2">
-            <Link
-              to={classId ? `/class/${classId}/profile` : "/profile"}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-2xl shadow-glow hover:scale-105 transition-all"
-            >
-              <span>Kelola &amp; Tambah Materi</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
+          {canManage && (
+            <div className="pt-2">
+              <Link
+                to={classId ? `/class/${classId}/profile` : "/profile"}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-2xl shadow-glow hover:scale-105 transition-all"
+              >
+                <span>Kelola &amp; Tambah Materi</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

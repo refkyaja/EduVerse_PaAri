@@ -1,0 +1,136 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\ClassModel;
+use App\Models\Materi;
+use App\Models\MateriVersi;
+use App\Models\LogAktivitas;
+use Illuminate\Http\Request;
+
+class MateriController extends Controller
+{
+    public function index($classId)
+    {
+        $materi = Materi::where('kelas_id', $classId)
+            ->with(['versiAktif', 'mapel', 'creator'])
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $materi
+        ]);
+    }
+
+    public function store(Request $request, $classId)
+    {
+        $user = $request->user();
+        $class = ClassModel::findOrFail($classId);
+
+        $member = $class->members()->where('user_id', $user->id)->first();
+        if (!$member || !in_array($member->role, ['owner', 'admin'])) {
+            return response()->json(['message' => 'Hanya Owner atau Admin yang dapat membuat materi.'], 403);
+        }
+
+        $validated = $request->validate([
+            'judul' => 'required|string|max:255',
+            'ringkasan' => 'nullable|string',
+            'isi' => 'required|string',
+            'mapel_id' => 'nullable|exists:mapel,id',
+        ]);
+
+        $status = ($member->role === 'owner') ? 'terverifikasi' : 'menunggu_verifikasi';
+
+        $materi = Materi::create([
+            'kelas_id' => $classId,
+            'mapel_id' => $validated['mapel_id'] ?? null,
+            'judul' => $validated['judul'],
+            'ringkasan' => $validated['ringkasan'] ?? null,
+            'dibuat_oleh' => $user->id,
+        ]);
+
+        $versi = MateriVersi::create([
+            'materi_id' => $materi->id,
+            'nomor_versi' => 1,
+            'isi' => $validated['isi'],
+            'status' => $status,
+            'dibuat_oleh' => $user->id,
+            'ditinjau_oleh' => ($member->role === 'owner') ? $user->id : null,
+            'ditinjau_pada' => ($member->role === 'owner') ? now() : null,
+        ]);
+
+        $materi->update(['versi_aktif_id' => $versi->id]);
+
+        LogAktivitas::create([
+            'kelas_id' => $classId,
+            'user_id' => $user->id,
+            'peran_user' => strtoupper($member->role),
+            'deskripsi_aksi' => ($member->role === 'owner')
+                ? "Membuat & menerbitkan materi \"{$materi->judul}\" (Terverifikasi)"
+                : "Mengajukan materi baru \"{$materi->judul}\" (Menunggu Verifikasi)",
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => ($member->role === 'owner')
+                ? "Materi \"{$materi->judul}\" berhasil diterbitkan!"
+                : "Materi \"{$materi->judul}\" diajukan! Menunggu Verifikasi Owner.",
+            'data' => $materi->load('versiAktif')
+        ], 201);
+    }
+
+    public function show($classId, $id)
+    {
+        $materi = Materi::where('kelas_id', $classId)
+            ->where('id', $id)
+            ->with(['versiAktif', 'versi.creator', 'versi.reviewer', 'mapel', 'creator'])
+            ->firstOrFail();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $materi
+        ]);
+    }
+
+    public function verifyVersion(Request $request, $classId, $versiId)
+    {
+        $user = $request->user();
+        $class = ClassModel::findOrFail($classId);
+
+        $member = $class->members()->where('user_id', $user->id)->first();
+        if (!$member || $member->role !== 'owner') {
+            return response()->json(['message' => 'Hanya Owner kelas yang dapat memverifikasi materi.'], 403);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:terverifikasi,perlu_perbaikan,ditolak',
+            'catatan_review' => 'nullable|string',
+        ]);
+
+        $versi = MateriVersi::findOrFail($versiId);
+        $versi->update([
+            'status' => $validated['status'],
+            'ditinjau_oleh' => $user->id,
+            'ditinjau_pada' => now(),
+            'catatan_review' => $validated['catatan_review'] ?? null,
+        ]);
+
+        if ($validated['status'] === 'terverifikasi') {
+            $versi->materi->update(['versi_aktif_id' => $versi->id]);
+        }
+
+        LogAktivitas::create([
+            'kelas_id' => $classId,
+            'user_id' => $user->id,
+            'peran_user' => 'OWNER',
+            'deskripsi_aksi' => "Memverifikasi versi materi \"{$versi->materi->judul}\" (Status: {$validated['status']})",
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Status versi materi berhasil diperbarui menjadi {$validated['status']}.",
+            'data' => $versi
+        ]);
+    }
+}

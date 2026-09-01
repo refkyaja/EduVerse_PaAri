@@ -3,6 +3,12 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClassController;
 use App\Http\Controllers\Api\ClassMemberController;
+use App\Http\Controllers\Api\MapelController;
+use App\Http\Controllers\Api\MateriController;
+use App\Http\Controllers\Api\SoalController;
+use App\Http\Controllers\Api\KuisController;
+use App\Http\Controllers\Api\LeaderboardController;
+use App\Http\Controllers\Api\LogAktivitasController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -37,4 +43,30 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/classes/{id}/members/{user}/demote', [ClassMemberController::class, 'demote']);
     Route::delete('/classes/{id}/members/{user}', [ClassMemberController::class, 'destroy']);
     Route::post('/classes/{id}/leave', [ClassMemberController::class, 'leave']);
+
+    // Mapel (Mata Pelajaran) API
+    Route::get('/classes/{id}/mapel', [MapelController::class, 'index']);
+    Route::post('/classes/{id}/mapel', [MapelController::class, 'store']);
+
+    // Materi API
+    Route::get('/classes/{id}/materi', [MateriController::class, 'index']);
+    Route::post('/classes/{id}/materi', [MateriController::class, 'store']);
+    Route::get('/classes/{id}/materi/{materiId}', [MateriController::class, 'show']);
+    Route::post('/classes/{id}/materi-versi/{versiId}/verify', [MateriController::class, 'verifyVersion']);
+
+    // Bank Soal API
+    Route::get('/classes/{id}/soal', [SoalController::class, 'index']);
+    Route::post('/classes/{id}/soal', [SoalController::class, 'store']);
+
+    // Kuis API
+    Route::get('/classes/{id}/kuis', [KuisController::class, 'index']);
+    Route::post('/classes/{id}/kuis', [KuisController::class, 'store']);
+    Route::get('/classes/{id}/kuis/{kuisId}', [KuisController::class, 'show']);
+    Route::post('/classes/{id}/kuis/{kuisId}/submit', [KuisController::class, 'submitAttempt']);
+
+    // Leaderboard XP API
+    Route::get('/classes/{id}/leaderboard', [LeaderboardController::class, 'index']);
+
+    // Log Aktivitas API
+    Route::get('/classes/{id}/log-aktivitas', [LogAktivitasController::class, 'index']);
 });

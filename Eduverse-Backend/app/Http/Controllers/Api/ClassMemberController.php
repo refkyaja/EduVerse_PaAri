@@ -16,7 +16,7 @@ class ClassMemberController extends Controller
     /**
      * Get list of members in a class (Members only).
      */
-    public function index(Request $request, int $id): JsonResponse
+    public function index(Request $request, $id): JsonResponse
     {
         $class = ClassModel::find($id);
 
@@ -47,7 +47,7 @@ class ClassMemberController extends Controller
     /**
      * Promote a Member to Admin (Owner only).
      */
-    public function promote(Request $request, int $id, int $userId): JsonResponse
+    public function promote(Request $request, $id, $userId): JsonResponse
     {
         $class = ClassModel::find($id);
 
@@ -65,7 +65,7 @@ class ClassMemberController extends Controller
             ], 403);
         }
 
-        if ($userId === $class->owner_id) {
+        if ((int)$userId === (int)$class->owner_id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Role Owner tidak dapat diubah',
@@ -98,7 +98,7 @@ class ClassMemberController extends Controller
     /**
      * Demote an Admin to Member (Owner only).
      */
-    public function demote(Request $request, int $id, int $userId): JsonResponse
+    public function demote(Request $request, $id, $userId): JsonResponse
     {
         $class = ClassModel::find($id);
 
@@ -116,7 +116,7 @@ class ClassMemberController extends Controller
             ], 403);
         }
 
-        if ($userId === $class->owner_id) {
+        if ((int)$userId === (int)$class->owner_id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Owner tidak dapat diturunkan menjadi Member',
@@ -149,7 +149,7 @@ class ClassMemberController extends Controller
     /**
      * Kick a member or admin from the class (Owner only).
      */
-    public function destroy(Request $request, int $id, int $userId): JsonResponse
+    public function destroy(Request $request, $id, $userId): JsonResponse
     {
         $class = ClassModel::find($id);
 
@@ -167,7 +167,7 @@ class ClassMemberController extends Controller
             ], 403);
         }
 
-        if ($userId === $class->owner_id) {
+        if ((int)$userId === (int)$class->owner_id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Owner tidak dapat mengeluarkan dirinya sendiri',
@@ -196,7 +196,7 @@ class ClassMemberController extends Controller
     /**
      * Member or Admin leaves the class (Owner CANNOT leave).
      */
-    public function leave(Request $request, int $id): JsonResponse
+    public function leave(Request $request, $id): JsonResponse
     {
         $user = $request->user();
         $class = ClassModel::find($id);
