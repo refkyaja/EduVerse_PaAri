@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================
+   EduQuest — Shared Design System
+   ========================================= */
+
+:root {
+  --radius: 1rem;
+
+  /* Brand colors in raw RGB format for Tailwind opacity modifiers */
+  --brand-purple: 178, 59, 231;
+  --brand-blue: 59, 130, 246;
+  --brand-soft: 248, 243, 251;
+  --dark-surface: 43, 37, 55;
+
+  --success: 34, 197, 94;
+  --warning: 245, 158, 11;
+  --danger: 239, 68, 68;
+  --xp-gold: 251, 191, 36;
+
+  /* Semantic light theme RGB values */
+  --background: 250, 249, 251;
+  --foreground: 43, 40, 50;
+  --card: 255, 255, 255;
+  --card-foreground: 43, 40, 50;
+  --popover: 255, 255, 255;
+  --popover-foreground: 43, 40, 50;
+  --primary: var(--brand-purple);
+  --primary-foreground: 253, 253, 253;
+  --primary-glow: 209, 102, 253;
+  --secondary: 242, 240, 245;
+  --secondary-foreground: 52, 47, 60;
+  --muted: 243, 242, 245;
+  --muted-foreground: 125, 119, 134;
+  --accent: 245, 234, 253;
+  --accent-foreground: 67, 43, 85;
+  --destructive: var(--danger);
+  --destructive-foreground: 253, 253, 253;
+  --border: 232, 229, 237;
+  --input: 232, 229, 237;
+  --ring: var(--brand-purple);
+}
+
+.dark {
+  /* Semantic dark theme RGB values */
+  --background: 37, 34, 45;
+  --foreground: 246, 245, 248;
+  --card: 52, 48, 62;
+  --card-foreground: 246, 245, 248;
+  --popover: 52, 48, 62;
+  --popover-foreground: 246, 245, 248;
+  --primary: 203, 94, 252;
+  --primary-foreground: 34, 30, 42;
+  --primary-glow: 226, 137, 254;
+  --secondary: 68, 62, 80;
+  --secondary-foreground: 246, 245, 248;
+  --muted: 62, 57, 73;
+  --muted-foreground: 167, 161, 178;
+  --accent: 79, 60, 99;
+  --accent-foreground: 246, 245, 248;
+  --border: 75, 71, 87;
+  --input: 78, 74, 91;
+  --ring: 203, 94, 252;
+
+  --brand-soft: 68, 59, 81;
+  --dark-surface: 27, 25, 33;
+}
+
+/* =========================================
+   Keyframes
+   ========================================= */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(178, 59, 231, 0.4); }
+  50%       { box-shadow: 0 0 30px 4px rgba(178, 59, 231, 0.2); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+
+/* Animation helper classes */
+.animate-fade-in   { animation: fade-in   0.4s ease-out forwards; }
+.animate-scale-in  { animation: scale-in  0.2s ease-out forwards; }
+.animate-slide-up  { animation: slide-up  0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-pulse-glow{ animation: pulse-glow 2s ease-in-out infinite; }
+.animate-float     { animation: float      4s ease-in-out infinite; }
+
+/* =========================================
+   Base Resets
+   ========================================= */
+* {
+  border-color: rgba(var(--border), 1);
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  background-color: rgba(var(--background), 1);
+  color: rgba(var(--foreground), 1);
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* =========================================
+   Scrollbar Overrides
+   ========================================= */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: rgba(var(--muted-foreground), 0.3); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--muted-foreground), 0.5); }
