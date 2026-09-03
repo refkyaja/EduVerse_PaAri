@@ -11,12 +11,73 @@ const getAuthHeaders = () => {
 
 export const apiService = {
   // --- KELAS & PENGATURAN ---
+  async getClasses() {
+    const res = await fetch(`${API_BASE_URL}/classes`, {
+      headers: getAuthHeaders(),
+    });
+    const result = await res.json();
+    if (!res.ok || result.status !== 'success') {
+      throw new Error(result.message || 'Gagal mengambil daftar kelas');
+    }
+    return (result.data || []).map(cls => ({
+      ...cls,
+      memberCount: cls.member_count ?? cls.memberCount ?? 1,
+      ownerName: cls.owner?.name || cls.owner?.username || cls.ownerName || 'Pemilik Kelas',
+      ownerId: cls.owner?.id || cls.ownerId,
+    }));
+  },
+
+  async createClass(data) {
+    const res = await fetch(`${API_BASE_URL}/classes`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok || result.status !== 'success') {
+      throw new Error(result.message || 'Gagal membuat kelas');
+    }
+    const cls = result.data;
+    return {
+      ...cls,
+      memberCount: cls.member_count ?? cls.memberCount ?? 1,
+      ownerName: cls.owner?.name || cls.owner?.username || cls.ownerName || 'Pemilik Kelas',
+      ownerId: cls.owner?.id || cls.ownerId,
+    };
+  },
+
+  async joinClass(code) {
+    const res = await fetch(`${API_BASE_URL}/classes/join`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ code }),
+    });
+    const result = await res.json();
+    if (!res.ok || result.status !== 'success') {
+      throw new Error(result.message || 'Gagal bergabung dengan kelas');
+    }
+    const cls = result.data;
+    return {
+      ...cls,
+      memberCount: cls.member_count ?? cls.memberCount ?? 1,
+      ownerName: cls.owner?.name || cls.owner?.username || cls.ownerName || 'Pemilik Kelas',
+      ownerId: cls.owner?.id || cls.ownerId,
+    };
+  },
+
   async getClass(classId) {
     const res = await fetch(`${API_BASE_URL}/classes/${classId}`, {
       headers: getAuthHeaders(),
     });
     const result = await res.json();
-    return result.data;
+    const cls = result.data;
+    if (!cls) return null;
+    return {
+      ...cls,
+      memberCount: cls.member_count ?? cls.memberCount ?? 1,
+      ownerName: cls.owner?.name || cls.owner?.username || cls.ownerName || 'Pemilik Kelas',
+      ownerId: cls.owner?.id || cls.ownerId,
+    };
   },
 
   async updateClass(classId, data) {
@@ -178,6 +239,32 @@ export const apiService = {
       throw new Error(result.message || 'Gagal menerbitkan kuis');
     }
     return result.data;
+  },
+
+  async parseSoalTeks(classId, teks) {
+    const res = await fetch(`${API_BASE_URL}/classes/${classId}/soal/parse-teks`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ teks }),
+    });
+    const result = await res.json();
+    if (!res.ok || result.status !== 'success') {
+      throw new Error(result.message || 'Gagal memproses teks soal');
+    }
+    return result.data || [];
+  },
+
+  async imporSoalBatch(classId, soalList) {
+    const res = await fetch(`${API_BASE_URL}/classes/${classId}/soal/impor`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ soal: soalList }),
+    });
+    const result = await res.json();
+    if (!res.ok || result.status !== 'success') {
+      throw new Error(result.message || 'Gagal mengimpor soal');
+    }
+    return result;
   },
 
   // --- LOG AKTIVITAS ---

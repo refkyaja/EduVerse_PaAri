@@ -1,37 +1,55 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Crown, Trophy, Search, X } from 'lucide-react';
-import { SCOPES_DATA } from '../data/leaderboardData';
+import { Link, useParams } from 'react-router-dom';
+import { Crown, Trophy, Search, X, ShieldAlert, ChevronRight } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 
 export default function LeaderboardPage() {
   const { classId } = useParams();
-  const { appState, currentUser, getClassXp } = useAppState();
+  const { appState, currentUser, getClassXp, findClass } = useAppState();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const isDemoClass = !classId || classId === 'cls-101' || classId === 'cls-102' || classId === 'cls-103';
-  const currentClassXp = isDemoClass ? appState.xp : (getClassXp ? getClassXp(classId) : 0);
+  const activeClass = classId && findClass ? findClass(classId) : null;
+  const isApiClass = Boolean(classId && !String(classId).startsWith('cls-') && !isNaN(Number(classId)));
 
-  const rawData = isDemoClass
-    ? SCOPES_DATA['Nasional']
-    : [
-        {
-          rank: 1,
-          name: currentUser?.name || 'Refky Satria (Kamu)',
-          avatar: currentUser?.profile_photo || '/assets/companion.png',
-          xp: currentClassXp || 3950,
-          school: 'Owner Kelas',
-          badge: '👑 Owner',
-          you: true,
-        },
-        { rank: 2, name: "Budi Santoso", xp: 3420, school: "SMKN 13 Bandung", badge: "👤 Admin", you: false },
-        { rank: 3, name: "Siti Rahma", xp: 2980, school: "SMKN 13 Bandung", badge: "🎓 Member", you: false },
-        { rank: 4, name: "Andi Wijaya", xp: 2650, school: "SMKN 13 Bandung", badge: "🎓 Member", you: false },
-        { rank: 5, name: "Dewi Lestari", xp: 2100, school: "SMKN 13 Bandung", badge: "🎓 Member", you: false },
-        { rank: 6, name: "Fajar Pratama", xp: 1850, school: "SMKN 13 Bandung", badge: "🎓 Member", you: false },
-        { rank: 7, name: "Rina Marlina", xp: 1600, school: "SMKN 13 Bandung", badge: "🎓 Member", you: false },
-      ];
+  if (classId && !activeClass && !isApiClass) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in max-w-md mx-auto py-12">
+        <div className="w-16 h-16 rounded-3xl bg-danger/10 text-danger flex items-center justify-center shadow-inner">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-extrabold italic text-foreground">Akses Ditolak / Kelas Tidak Ditemukan</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Ruang kelas dengan ID <code className="text-primary font-mono bg-muted px-1.5 py-0.5 rounded">{classId}</code> tidak ditemukan atau Anda tidak terdaftar sebagai anggota di kelas ini.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-glow hover:scale-105 transition-all"
+          >
+            <span>Kembali ke Beranda</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+    const currentClassXp = getClassXp ? getClassXp(classId) : (currentUser?.xp || appState?.xp || 0);
+
+  const rawData = [
+    {
+      rank: 1,
+      name: currentUser?.name || 'Kamu',
+      avatar: currentUser?.profile_photo || currentUser?.avatar || '/assets/companion.png',
+      xp: currentClassXp || 0,
+      school: activeClass?.name || 'Kelas Saya',
+      badge: '👑 Owner',
+      you: true,
+    }
+  ];
   
   // Clone data and update user XP dynamically
   const fullData = rawData.map(item => {

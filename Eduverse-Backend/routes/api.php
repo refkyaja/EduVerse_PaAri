@@ -57,6 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Bank Soal API
     Route::get('/classes/{id}/soal', [SoalController::class, 'index']);
     Route::post('/classes/{id}/soal', [SoalController::class, 'store']);
+    Route::post('/classes/{id}/soal/parse-teks', [SoalController::class, 'parseTeks']);
+    Route::post('/classes/{id}/soal/impor', [SoalController::class, 'imporBatch']);
 
     // Kuis API
     Route::get('/classes/{id}/kuis', [KuisController::class, 'index']);

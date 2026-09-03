@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../services/authService';
-import { INITIAL_CLASSES } from '../data/mockData';
+import { apiService } from '../services/apiService';
+import { INITIAL_CLASSES, INITIAL_QUIZZES } from '../data/mockData';
 
 const AppStateContext = createContext();
 
 const INITIAL_STATE = {
-  xp: 3950,
+  xp: 4080,
   streak: 7,
-  examsCompleted: 42,
-  correctAnswers: 0,
+  examsCompleted: 44,
+  correctAnswers: 176,
   powerUps: { hint: 3, shield: 2, freeze: 1, combo: 5 },
   darkMode: false
 };
@@ -62,16 +63,39 @@ export function AppStateProvider({ children }) {
     }
   }, [appState.darkMode]);
 
-  // Sync user profile on mount if token exists
+  // Sync user profile & user classes on mount or token change
   useEffect(() => {
     if (authService.getToken()) {
       authService.getProfile()
-        .then(user => setCurrentUser(user))
+        .then(user => {
+          setCurrentUser(user);
+        })
         .catch(err => {
           console.warn('Auto profile fetch failed:', err);
         });
+      fetchUserClasses();
+    } else {
+      setClassList([]);
     }
   }, []);
+
+  const [classList, setClassList] = useState([]);
+
+  const fetchUserClasses = async () => {
+    if (!authService.getToken()) {
+      setClassList([]);
+      return [];
+    }
+    try {
+      const classes = await apiService.getClasses();
+      setClassList(classes);
+      return classes;
+    } catch (e) {
+      console.warn("Failed to fetch user classes from API:", e);
+      setClassList([]);
+      return [];
+    }
+  };
 
   const toggleDarkMode = () => {
     setAppState(prev => ({ ...prev, darkMode: !prev.darkMode }));
@@ -97,6 +121,7 @@ export function AppStateProvider({ children }) {
     const res = await authService.login(credentials);
     if (res.data?.user) {
       setCurrentUser(res.data.user);
+      await fetchUserClasses();
       showToast(`Selamat datang kembali, ${res.data.user.name}!`);
     }
     return res;
@@ -106,6 +131,7 @@ export function AppStateProvider({ children }) {
     const res = await authService.register(data);
     if (res.data?.user) {
       setCurrentUser(res.data.user);
+      await fetchUserClasses();
       showToast(`Akun ${res.data.user.name} berhasil terdaftar di database!`);
     }
     return res;
@@ -128,6 +154,17 @@ export function AppStateProvider({ children }) {
   const logoutUser = async () => {
     await authService.logout();
     setCurrentUser(null);
+    setClassList([]);
+    setAppState(INITIAL_STATE);
+    setMateriList([]);
+    setQuizList(INITIAL_QUIZZES);
+    localStorage.removeItem('eduverse_classes');
+    localStorage.removeItem('eduverse_user_classes');
+    localStorage.removeItem('eduverse_materi');
+    localStorage.removeItem('eduverse_quizzes');
+    localStorage.removeItem('eduquest_state');
+    localStorage.removeItem('eduverse_user');
+    localStorage.removeItem('eduverse_token');
     showToast("Anda telah keluar dari akun.");
   };
 
@@ -150,34 +187,11 @@ export function AppStateProvider({ children }) {
     }));
   };
 
-  const [classList, setClassList] = useState(() => {
-    try {
-      const stored = localStorage.getItem('eduverse_classes');
-      if (stored) return JSON.parse(stored);
-    } catch (e) {}
-    return INITIAL_CLASSES;
-  });
-
-  useEffect(() => {
-    const handleStorageChange = () => {
-      try {
-        const stored = localStorage.getItem('eduverse_classes');
-        if (stored) setClassList(JSON.parse(stored));
-      } catch (e) {}
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
   const registerClass = (newCls) => {
     setClassList(prev => {
       const exists = prev.some(c => c.id === newCls.id);
       if (exists) return prev;
-      const updated = [newCls, ...prev];
-      try {
-        localStorage.setItem('eduverse_classes', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
+      return [newCls, ...prev];
     });
   };
 
@@ -185,15 +199,80 @@ export function AppStateProvider({ children }) {
     if (!classId) return null;
     const found = classList.find(c => c.id === classId || c.code === classId);
     if (found) return found;
-    return {
-      id: classId,
-      name: "Kelas Baru",
-      description: "Ruang kelas digital EduVerse",
-      code: "EDU123",
-      memberCount: 1,
-      role: "owner",
-      isNew: true,
-    };
+    if (String(classId).startsWith('cls-')) {
+      return {
+        id: classId,
+        name: "Kelas Saya",
+        description: "Ruang kelas digital EduVerse",
+        code: String(classId).slice(-6).toUpperCase(),
+        memberCount: 1,
+        role: currentUser?.activeRole || "member",
+      };
+    }
+    return null;
+  };
+
+  const updateClassInfo = (classId, newDetails) => {
+    if (!classId) return;
+    setClassList(prev => {
+      const existingIdx = prev.findIndex(c => c.id === classId);
+      let updated;
+      if (existingIdx >= 0) {
+        updated = [...prev];
+        updated[existingIdx] = { ...updated[existingIdx], ...newDetails };
+      } else {
+        const fallbackClass = {
+          id: classId,
+          name: newDetails.name || "Kelas Saya",
+          description: newDetails.description || "Ruang kelas digital EduVerse",
+          code: newDetails.code || String(classId).slice(-6).toUpperCase(),
+          memberCount: 1,
+          role: "owner",
+          ...newDetails
+        };
+        updated = [fallbackClass, ...prev];
+      }
+      try {
+        localStorage.setItem('eduverse_classes', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const [materiList, setMateriList] = useState(() => {
+    try {
+      const stored = localStorage.getItem('eduverse_materi');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return [];
+  });
+
+  const addMateri = (newMateri) => {
+    setMateriList(prev => {
+      const updated = [newMateri, ...prev];
+      try {
+        localStorage.setItem('eduverse_materi', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+  };
+
+  const [quizList, setQuizList] = useState(() => {
+    try {
+      const stored = localStorage.getItem('eduverse_quizzes');
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return INITIAL_QUIZZES;
+  });
+
+  const addQuiz = (newQuiz) => {
+    setQuizList(prev => {
+      const updated = [newQuiz, ...prev];
+      try {
+        localStorage.setItem('eduverse_quizzes', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   return (
@@ -203,8 +282,14 @@ export function AppStateProvider({ children }) {
       currentUser,
       setCurrentUser,
       classList,
+      fetchUserClasses,
       registerClass,
       findClass,
+      updateClassInfo,
+      materiList,
+      addMateri,
+      quizList,
+      addQuiz,
       classXpMap,
       getClassXp,
       addClassXp,

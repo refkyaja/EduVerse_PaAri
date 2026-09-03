@@ -1,28 +1,30 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, BookOpen, Swords, Trophy, User } from 'lucide-react';
+import { useAppState } from '../context/AppStateContext';
 
 export default function BottomNav() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { classList } = useAppState();
 
-  // Extract active class ID if in a class route
+  // Extract active class ID if in a class route, otherwise use user's first class
   const classMatch = currentPath.match(/\/class\/([^\/]+)/);
-  const classId = classMatch ? classMatch[1] : 'cls-101';
+  const activeClassId = classMatch ? classMatch[1] : (classList?.[0]?.id || null);
 
   const pages = [
-    { id: 'home',        Icon: Home,       label: 'Home',    path: `/class/${classId}` },
-    { id: 'materi',      Icon: BookOpen,   label: 'Materi',  path: `/class/${classId}/materi` },
-    { id: 'quiz',        Icon: Swords,     label: 'Main',    path: `/class/${classId}/kuis`, isCenter: true },
-    { id: 'leaderboard', Icon: Trophy,     label: 'Ranking', path: `/class/${classId}/leaderboard` },
-    { id: 'profile',     Icon: User,       label: 'Akun',    path: `/class/${classId}/profile` },
+    { id: 'home',        Icon: Home,       label: 'Home',    path: activeClassId ? `/class/${activeClassId}` : '/' },
+    { id: 'materi',      Icon: BookOpen,   label: 'Materi',  path: activeClassId ? `/class/${activeClassId}/materi` : '/materi' },
+    { id: 'quiz',        Icon: Swords,     label: 'Main',    path: activeClassId ? `/class/${activeClassId}/kuis` : '/quiz', isCenter: true },
+    { id: 'leaderboard', Icon: Trophy,     label: 'Ranking', path: activeClassId ? `/class/${activeClassId}/leaderboard` : '/leaderboard' },
+    { id: 'profile',     Icon: User,       label: 'Akun',    path: activeClassId ? `/class/${activeClassId}/profile` : '/profile' },
   ];
 
   return (
     <nav id="global-bottomnav" className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md md:max-w-2xl lg:max-w-4xl bg-card border-t md:border-x border-border md:rounded-t-2xl px-4 md:px-8 py-3 flex justify-between items-center z-50 shadow-lg">
       {pages.map(p => {
         const isActive = currentPath === p.path ||
-                         (p.id === 'home' && (currentPath === `/class/${classId}` || currentPath === '/')) ||
+                         (p.id === 'home' && (currentPath === `/class/${activeClassId}` || currentPath === '/')) ||
                          (p.id === 'materi' && (currentPath.includes('/materi'))) ||
                          (p.id === 'quiz' && (currentPath.includes('/kuis') || currentPath.includes('/quiz'))) ||
                          (p.id === 'leaderboard' && (currentPath.includes('/leaderboard'))) ||

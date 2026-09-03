@@ -21,6 +21,10 @@ Platform belajar berbasis kelas — pengguna bisa bikin kelas sendiri, mengundan
 
 Aturan-aturan ini berlaku untuk semua perubahan berikutnya, tanpa perlu diingatkan lagi. Selain itu, jangan redesign halaman utama atau halaman kelas tanpa instruksi eksplisit (desain lama di `Eduverse-Reference/` sudah dianggap final), jangan hapus fitur lama tanpa alasan, dan jangan bikin role baru selain Owner, Admin, Member.
 
+10. **Jangan pernah render `currentUser`/`user` yang lagi login buat nampilin "siapa yang melakukan X"** (pembuat, pemilik, reviewer, pelaku log, dsb). Data itu SELALU harus dari relasi API (`kelas.owner`, `materi.creator`, `materi_versi.reviewer`, `log.user`, dst), gak peduli siapa yang lagi liat halamannya. Ini pernah jadi bug kritis kebocoran data (nama pembuat kelas ikut ganti sesuai user yang login) — jangan sampe polanya balik lagi di fitur baru.
+11. **Semua endpoint sub-resource kelas** (materi, soal, kuis, anggota, leaderboard, audit log, dst) **wajib verifikasi keanggotaan** (`$class->hasUser($user)` atau lewat Gate/Policy) sebelum ngebalikin data — non-anggota harus dapet 403. Kalau bikin controller/endpoint baru buat kelas, contek pola ini dari controller yang udah ada, jangan mulai dari nol tanpa proteksi ini.
+12. Data user (kelas yang diikuti, materi, progress, dsb) gak boleh nyangkut di `localStorage`/state global lintas sesi login. Pastikan logout selalu ngebersihin SEMUA key per-user, dan state awal aplikasi kosong sebelum data asli dari API di-fetch.
+
 ## Tech Stack
 
 - **Backend**: Laravel, REST API
@@ -64,22 +68,28 @@ EduVerse_PaAri/
 │       └── api.php
 ├── Eduverse-Frontend/
 │   └── src/
+│       ├── routes/
+│       │   └── AppRoutes.jsx       daftar route react-router-dom
+│       ├── layouts/
+│       │   └── MobileLayout.jsx
 │       ├── pages/
-│       │   ├── Login.jsx
-│       │   ├── Register.jsx
-│       │   ├── HalamanUtama.jsx
-│       │   ├── BerandaKelas.jsx
-│       │   ├── Materi.jsx
-│       │   ├── Kuis.jsx
-│       │   ├── KuisKerjakan.jsx
-│       │   ├── Leaderboard.jsx
-│       │   ├── Anggota.jsx
-│       │   └── Pengaturan.jsx
+│       │   ├── LoginPage.jsx
+│       │   ├── RegisterPage.jsx
+│       │   ├── AboutPage.jsx        halaman publik "Tentang"
+│       │   ├── MainPage.jsx         daftar kelas, buat/gabung kelas
+│       │   ├── HomePage.jsx         beranda kelas (/class/:classId)
+│       │   ├── MateriPage.jsx
+│       │   ├── QuizPickerPage.jsx   daftar kuis
+│       │   ├── QuizPlayPage.jsx     kerjain kuis
+│       │   ├── LeaderboardPage.jsx
+│       │   ├── ClassAnggotaPage.jsx
+│       │   ├── ProfilePage.jsx      hub tab: profile/settings/add_subject/add_material/add_quiz/verification/members/audit_log
+│       │   └── AccountSettingsPage.jsx  pengaturan akun (global, bukan per kelas)
 │       ├── components/
 │       ├── context/
-│       │   └── AuthContext.jsx
+│       │   └── AppStateContext.jsx
 │       └── services/
-│           └── api.js
+│           └── authService.js
 ├── Eduverse-Reference/        desain lama, acuan visual — jangan diubah/dihapus
 └── README.md
 ```
@@ -97,6 +107,10 @@ Role berlaku **per-kelas**, disimpan di kolom `role` tabel `anggota_kelas` — s
 Tidak ada role tambahan (Moderator, Kontributor, Super Admin, dsb).
 
 ## Routes (routes/api.php)
+
+> **Belum diverifikasi dari kode asli** — backend belum dikirim. Ini asumsi
+> berdasarkan struktur data, cocokin ke `routes/api.php` yang sebenarnya begitu
+> ada, jangan langsung dipakai buat implementasi tanpa dicek dulu.
 
 ```
 POST /api/register                                    → daftar akun
@@ -128,7 +142,9 @@ POST /api/kelas/{kelas}/materi-versi/{versi}/setuju      → approve versi (Owne
 POST /api/kelas/{kelas}/materi-versi/{versi}/tolak       → tolak versi, catatan wajib (Owner)
 
 GET  /api/kelas/{kelas}/soal                             → bank soal
-POST /api/kelas/{kelas}/soal                             → buat soal (Admin & Owner)
+POST /api/kelas/{kelas}/soal                             → buat soal manual satu-satu (Admin & Owner)
+POST /api/kelas/{kelas}/soal/parse-teks                   → parse teks hasil AI jadi preview soal, belum disimpan (Admin & Owner)
+POST /api/kelas/{kelas}/soal/impor                        → simpan banyak soal sekaligus dari hasil preview parse-teks
 PUT  /api/kelas/{kelas}/soal/{soal}                      → edit soal
 DELETE /api/kelas/{kelas}/soal/{soal}                    → hapus soal
 
@@ -143,43 +159,100 @@ GET  /api/kelas/{kelas}/kuis/{kuis}/riwayat              → riwayat percobaan u
 GET  /api/kelas/{kelas}/leaderboard                      → leaderboard kelas berdasar XP
 ```
 
+## Routes Frontend (react-router-dom, di AppRoutes.jsx)
+
+```
+/about, /login, /register                    → publik, gak butuh login
+
+/                                              → MainPage (daftar kelas, buat/gabung kelas)
+/class/:classId                                → HomePage (beranda kelas)
+/class/:classId/materi                         → MateriPage
+/class/:classId/kuis                           → QuizPickerPage
+/quiz/play                                     → QuizPlayPage
+/class/:classId/leaderboard                    → LeaderboardPage
+/class/:classId/anggota                        → ClassAnggotaPage
+
+/class/:classId/profile                        → ProfilePage (tab profil, default)
+/class/:classId/edit-info                      → ProfilePage tab=settings
+/class/:classId/add-subject                    → ProfilePage tab=add_subject
+/class/:classId/add-material                   → ProfilePage tab=add_material
+/class/:classId/add-quiz                       → ProfilePage tab=add_quiz
+/class/:classId/verification                   → ProfilePage tab=verification
+/class/:classId/members                        → ProfilePage tab=members
+/class/:classId/audit-log                      → ProfilePage tab=audit_log
+
+/settings                                      → AccountSettingsPage (pengaturan akun, global bukan per kelas)
+```
+
+`classId` di URL berupa string slug format `cls-<timestamp>`, bukan integer biasa — cek kolom `id`/`slug` di tabel `kelas` backend beneran pakai format ini atau ada kolom terpisah buat slug URL.
+
 ## Halaman Frontend (React)
 
-### Login / Register
+### LoginPage.jsx / RegisterPage.jsx
 - Form login dan register terpisah, data akun dasar: nama, username, email, password, foto profil, bio
 
-### HalamanUtama.jsx
+### AboutPage.jsx
+- Halaman publik "Tentang" — jelasin fungsi EduVerse, gak butuh login
+
+### MainPage.jsx
 - Daftar kelas yang diikuti, tombol Gabung Kelas & Buat Kelas, profil, pengaturan akun
 - Desain halaman ini sudah dianggap baik — fokus pengembangan cuma bikin responsif, jangan redesign
 
-### BerandaKelas.jsx
+### HomePage.jsx — Beranda Kelas
 - Pengumuman, aktivitas terbaru, materi baru, kuis baru, info kelas
 - Navigasi Member/Admin: Beranda | Materi | Kuis | Leaderboard | Anggota
-- Navigasi Owner: tambah menu Pengaturan
+- Navigasi Owner: tambah menu ke ProfilePage (Pengaturan)
 
-### Materi.jsx
+### MateriPage.jsx
 - Daftar materi, detail materi dengan dropdown/kontrol versi (menampilkan nomor versi, waktu perubahan, pengguna yang mengubah, status)
-- Form kontribusi materi buat Admin & Owner; materi buatan Owner langsung terverifikasi, buatan Admin masuk `menunggu_verifikasi`
-- Halaman verifikasi khusus Owner buat approve/reject materi dari Admin
+- **Materi dikelompokkan per Mata Pelajaran** — ada route khusus `add-subject` buat nambah mata pelajaran, jadi ini fitur asli, bukan sisa dummy dari Eduverse-Reference. Perlu dicek apakah tabel `mata_pelajaran`/`subjects` udah ada di backend; kalau belum, ini yang perlu dibikin duluan sebelum form add-subject bisa jalan beneran.
 
-### Kuis.jsx & KuisKerjakan.jsx
+### QuizPickerPage.jsx & QuizPlayPage.jsx
 - Daftar kuis (status aktif), halaman kerjain kuis (timer opsional, acak soal/opsi kalau diaktifkan)
 - Kuis bisa diulang; tiap percobaan disimpan biar riwayat pengerjaan tetap ada
-- Manajemen bank soal (buat/edit/hapus soal) buat Admin & Owner
+- Form tambah kuis ada di ProfilePage tab `add_quiz`, dengan 2 mode input:
+  - **Manual**: form satu-satu (pertanyaan, jenis soal, opsi jawaban, jawaban benar, pembahasan)
+  - **Tempel Teks**: textarea buat paste hasil generate AI (Claude/ChatGPT/dst), tombol "Parse"
+    manggil endpoint parse-teks (nama endpoint pasti nyusul dicek dari backend) buat dapetin
+    preview soal yang bisa diedit sebelum disimpan. Format teks: nomor+titik+pertanyaan, opsi
+    A/B/C/D per baris, baris "Jawaban: [huruf]", opsional baris "Pembahasan: ...". Soal yang
+    gagal ke-parse ditandain di preview, bukan didiemin/dibuang.
+  - Form kuis TIDAK punya field jadwal/hari — kuis dibuat kapan aja, gak terikat jadwal
+    mata pelajaran (EduVerse gak fokus ke sekolah, lihat README bagian Tujuan). Field
+    "Jadwal Hari" yang sempet muncul di form add_quiz itu bug, harus dihapus.
 
-### Leaderboard.jsx
+### LeaderboardPage.jsx
 - Peringkat anggota kelas berdasarkan XP, bukan skor mentah
 
-### Anggota.jsx
+### ClassAnggotaPage.jsx
 - Daftar seluruh anggota kelas: foto profil, nama, username
 
-### Pengaturan.jsx (khusus Owner)
-- Informasi kelas (nama, deskripsi)
-- Kode kelas (lihat, buat ulang)
-- Kelola Admin & anggota
-- Danger zone: hapus kelas, transfer kepemilikan
+### ProfilePage.jsx (hub tab, khusus konten Owner banyak diaktifin di sini)
+- Tab `settings`: informasi kelas (nama, deskripsi), kode kelas (lihat, buat ulang) — ganti nama kelas TIDAK BOLEH ikut ubah kode kelas
+- Tab `mapel` (dulu "Tambah Mapel Baru"): list/tabel daftar mapel kelas ini + tombol Buat di kanan atas
+- Tab `materi` (dulu "Tambah Materi"): list/tabel daftar materi kelas ini + tombol Buat di kanan atas
+- Tab `add_quiz`: form tambah kuis (lihat detail di atas)
+- Tab `verification`: daftar materi menunggu verifikasi, approve/reject, dengan tampilan 2 kolom (versi lama vs versi baru) buat dibandingin
+- Tab `members`: khusus Owner, kelola role Admin/Member & keluarkan anggota
+- Tab `audit_log`: riwayat perubahan/log aktivitas kelas
+
+### Menu Anggota (baru, semua role — Owner/Admin/Member)
+- Terpisah dari tab `members` yang di atas — ini cuma nampilin daftar anggota kelas (read-only: foto, nama, username, role), gak ada tombol kelola. Ditaro di menu navigasi di bawah "Ringkasan & Statistik", di luar grup "Manajemen Owner", karena semua role boleh akses.
+
+### AccountSettingsPage.jsx
+- Pengaturan akun user secara global (bukan per kelas): edit profil, foto, bio, dst
 
 ## Database
+
+> **Belum diverifikasi dari migration asli.** Tabel di bawah termasuk 2 tambahan
+> baru yang ketauan dari routing frontend (`mata_pelajaran` dan `audit_log`) —
+> cek dulu apa udah ada migration-nya sebelum bikin baru.
+
+### Tabel mata_pelajaran (baru diketahui, cek dulu sebelum bikin migration baru)
+- `id`, `kelas_id` (FK kelas), `nama`, `timestamps` — dipakai buat ngelompokin materi (route `/class/:classId/add-subject`)
+
+### Tabel audit_log (baru diketahui, cek dulu sebelum bikin migration baru)
+- `id`, `kelas_id` (FK kelas), `user_id` (FK users, yang ngelakuin aksi), `aksi` (deskripsi singkat perubahan), `timestamps` — ditampilin di tab `audit_log` ProfilePage
 
 ### Tabel users
 - `id`, `name`, `username`, `email`, `password`, `foto_profil`, `bio`, `timestamps`
@@ -215,6 +288,9 @@ GET  /api/kelas/{kelas}/leaderboard                      → leaderboard kelas b
 - `id`, `percobaan_id`, `soal_id`, `opsi_dipilih_id`, `benar`, `timestamps`
 
 ## Catatan Penting
+
+- **Backend belum diverifikasi langsung dari kode.** Semua yang ada di section Routes dan Database di file ini disusun dari README + hasil analisa routing frontend (`AppRoutes.jsx`), bukan dari `routes/api.php` atau migration asli. Kalau nemu bedanya pas kerja, kode asli yang bener, bukan file ini — dan tolong laporkan biar file ini diupdate lagi.
+- Mata Pelajaran itu fitur asli (ada route `add-subject` khusus), bukan sisa dummy — perlu tabel `mata_pelajaran` dan materi perlu kolom relasi ke situ kalau belum ada.
 
 - Kode kelas: kalau di-regenerate, kode lama otomatis gak berlaku lagi karena udah gak match ke row manapun — gak perlu tabel riwayat kode terpisah.
 - Materi punya riwayat versi lengkap (nomor versi, waktu, pengubah, status, catatan) — versi lama tidak dihapus.

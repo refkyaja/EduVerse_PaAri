@@ -70,4 +70,12 @@ class User extends Authenticatable
             ->withPivot('role', 'joined_at')
             ->withTimestamps();
     }
+
+    /**
+     * Get quiz attempts completed by this user.
+     */
+    public function percobaanKuis(): HasMany
+    {
+        return $this->hasMany(PercobaanKuis::class, 'user_id');
+    }
 }

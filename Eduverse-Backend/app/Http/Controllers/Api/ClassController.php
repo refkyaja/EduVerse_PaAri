@@ -22,11 +22,12 @@ class ClassController extends Controller
     {
         $user = $request->user();
 
-        $classes = ClassModel::whereHas('classMembers', function ($query) use ($user) {
-            $query->where('user_id', $user->id);
+        $classes = ClassModel::where(function ($query) use ($user) {
+            $query->whereHas('classMembers', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            })->orWhere('owner_id', $user->id);
         })
-        ->orWhere('owner_id', $user->id)
-        ->with('owner', 'classMembers')
+        ->with(['owner', 'classMembers'])
         ->latest()
         ->get();
 

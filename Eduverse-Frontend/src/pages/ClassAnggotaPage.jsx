@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Users, ShieldCheck, UserCheck, UserX } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function ClassAnggotaPage({ members, currentRole, onToggleAdmin, onKickMember }) {
   const { showToast } = useAppState();
+  const [memberToKick, setMemberToKick] = useState(null);
 
   const isOwner = currentRole === 'owner';
 
@@ -13,18 +15,19 @@ export default function ClassAnggotaPage({ members, currentRole, onToggleAdmin, 
     onToggleAdmin(mem.id, newRole);
   };
 
-  const handleKick = (mem) => {
+  const handleKickClick = (mem) => {
     if (!isOwner) return;
-    if (confirm(`Apakah Anda yakin ingin mengeluarkan ${mem.name} dari kelas?`)) {
-      onKickMember(mem.id);
+    setMemberToKick(mem);
+  };
+
+  const confirmKick = () => {
+    if (memberToKick) {
+      onKickMember(memberToKick.id);
+      setMemberToKick(null);
     }
   };
 
-  const list = members || [
-    { id: '1', name: 'Refky Satria', username: '@refky', role: 'Owner', avatar: '/assets/companion.png' },
-    { id: '2', name: 'Budi Santoso', username: '@budi', role: 'Admin', avatar: '/assets/avatar.png' },
-    { id: '3', name: 'Siti Rahma', username: '@siti', role: 'Member', avatar: '/assets/avatar.png' },
-  ];
+  const list = members || [];
 
   return (
     <div className="space-y-5">
@@ -97,7 +100,7 @@ export default function ClassAnggotaPage({ members, currentRole, onToggleAdmin, 
                     {isMemAdmin ? 'Jadikan Member' : 'Jadikan Admin'}
                   </button>
                   <button
-                    onClick={() => handleKick(mem)}
+                    onClick={() => handleKickClick(mem)}
                     className="w-8 h-8 rounded-xl bg-danger/10 text-danger hover:bg-danger/20 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
                     title="Keluarkan Anggota"
                   >
@@ -109,6 +112,17 @@ export default function ClassAnggotaPage({ members, currentRole, onToggleAdmin, 
           );
         })}
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(memberToKick)}
+        onClose={() => setMemberToKick(null)}
+        onConfirm={confirmKick}
+        title="Keluarkan Anggota?"
+        description={`Apakah Anda yakin ingin mengeluarkan "${memberToKick?.name}" dari kelas ini?`}
+        confirmText="Ya, Keluarkan"
+        cancelText="Batal"
+        variant="danger"
+      />
     </div>
   );
 }

@@ -33,6 +33,14 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function ClassRouteRedirect({ targetTab }) {
+  const { classList } = useAppState();
+  if (classList && classList.length > 0 && classList[0]?.id) {
+    return <Navigate to={`/class/${classList[0].id}/${targetTab}`} replace />;
+  }
+  return <Navigate to="/" replace />;
+}
+
 export default function AppRoutes({
   user,
   classes,
@@ -134,29 +142,11 @@ export default function AppRoutes({
         }
       />
 
-      {/* 7. STANDALONE MATERI & KUIS (PROTECTED) */}
-      <Route
-        path="/materi"
-        element={
-          <ProtectedRoute>
-            <MobileLayout>
-              <MateriPage currentRole={user?.activeRole} />
-            </MobileLayout>
-          </ProtectedRoute>
-        }
-      />
+      {/* 7. STANDALONE REDIRECTS TO ACTIVE CLASS */}
+      <Route path="/materi" element={<ProtectedRoute><ClassRouteRedirect targetTab="materi" /></ProtectedRoute>} />
       <Route path="/materi.html" element={<Navigate to="/materi" replace />} />
 
-      <Route
-        path="/quiz"
-        element={
-          <ProtectedRoute>
-            <MobileLayout>
-              <QuizPickerPage />
-            </MobileLayout>
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/quiz" element={<ProtectedRoute><ClassRouteRedirect targetTab="kuis" /></ProtectedRoute>} />
       <Route path="/quiz.html" element={<Navigate to="/quiz" replace />} />
 
       <Route
@@ -172,16 +162,7 @@ export default function AppRoutes({
       <Route path="/quiz-play" element={<Navigate to="/quiz/play" replace />} />
       <Route path="/quiz-play.html" element={<Navigate to="/quiz/play" replace />} />
 
-      <Route
-        path="/leaderboard"
-        element={
-          <ProtectedRoute>
-            <MobileLayout>
-              <LeaderboardPage />
-            </MobileLayout>
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/leaderboard" element={<ProtectedRoute><ClassRouteRedirect targetTab="leaderboard" /></ProtectedRoute>} />
       <Route path="/leaderboard.html" element={<Navigate to="/leaderboard" replace />} />
 
       {/* 8. PROFIL & PUSAT PENGATURAN KELAS (PROTECTED) */}
@@ -268,9 +249,15 @@ export default function AppRoutes({
 
       <Route
         path="/profile"
-        element={<Navigate to="/class/cls-101/profile" replace />}
+        element={
+          <ProtectedRoute>
+            <MobileLayout>
+              <ProfilePage />
+            </MobileLayout>
+          </ProtectedRoute>
+        }
       />
-      <Route path="/profile.html" element={<Navigate to="/class/cls-101/profile" replace />} />
+      <Route path="/profile.html" element={<Navigate to="/profile" replace />} />
 
       <Route
         path="/settings"

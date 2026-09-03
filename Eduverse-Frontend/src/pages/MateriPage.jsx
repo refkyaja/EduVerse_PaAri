@@ -1,69 +1,100 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { BookOpen, Library, BookOpenCheck, ChevronRight } from 'lucide-react';
+import { ChevronRight, FileText, Plus, BookOpen, Library, BookOpenCheck, ShieldAlert } from 'lucide-react';
 import MateriModal from '../components/MateriModal';
 import VerificationBadge from '../components/VerificationBadge';
 import MaterialVersionDropdown from '../components/MaterialVersionDropdown';
 import { useAppState } from '../context/AppStateContext';
+import { apiService } from '../services/apiService';
 
 export default function MateriPage({ currentRole }) {
   const { classId } = useParams();
-  const { findClass } = useAppState();
+  const { findClass, materiList, currentUser } = useAppState();
   const [selectedMateriId, setSelectedMateriId] = useState(null);
+  const [apiMaterials, setApiMaterials] = useState([]);
 
   const activeClass = classId && findClass ? findClass(classId) : null;
-  const isDemoClass = !classId || classId === 'cls-101' || classId === 'cls-102' || classId === 'cls-103';
-  const effectiveRole = currentRole || activeClass?.role || (isDemoClass ? 'owner' : 'member');
-  const canManage = effectiveRole === 'owner' || effectiveRole === 'admin';
+  const isApiClass = Boolean(classId && !String(classId).startsWith('cls-') && !isNaN(Number(classId)));
+  const userRole = String(currentRole || activeClass?.role || currentUser?.activeRole || 'member').toLowerCase();
+  const canManage = userRole === 'owner' || userRole === 'admin';
 
-  const subjects = isDemoClass ? [
-    {
-      code: 'PABP',
-      name: 'PABP',
-      gradient: 'from-emerald-600 to-green-700',
-      chapters: [
-        { id: 'pabp-buku', num: '01', title: 'Buku Paket PABP', desc: 'Ringkasan · Materi', status: 'verified', version: 2 },
-      ]
-    },
-    {
-      code: 'IND',
-      name: 'Bahasa Indonesia',
-      gradient: 'from-orange-500 to-pink-600',
-      chapters: [
-        { id: 'ind-iklan', num: '01', title: 'Teks Iklan & Slogan', desc: 'Ringkasan · Materi', status: 'verified', version: 1 },
-        { id: 'ind-berita', num: '02', title: 'Teks Berita', desc: 'Ringkasan · Materi', status: 'verified', version: 2 },
-        { id: 'ind-multimodal', num: '03', title: 'Teks Multimodal', desc: 'Ringkasan · Materi', status: 'verified', version: 1 },
-      ]
-    },
-    {
-      code: 'PWP',
-      name: 'PWP (Pemrograman Web & Perangkat Bergerak)',
-      gradient: 'from-rose-500 to-red-600',
-      chapters: [
-        { id: 'pwp-laravel', num: '01', title: 'Pengenalan Arsitektur MVC pada Laravel', desc: 'Ringkasan · Materi', status: 'verified', version: 3 },
-      ]
-    },
-    {
-      code: 'PPAN',
-      name: 'Pendidikan Pancasila',
-      gradient: 'from-amber-500 to-yellow-600',
-      chapters: [
-        { id: 'ppan-bab3', num: '01', title: 'Harmoni dalam Keberagaman', desc: 'Ringkasan · Materi', status: 'verified', version: 1 },
-        { id: 'ppan-bab4', num: '02', title: 'Wawasan Nusantara', desc: 'Ringkasan · Materi', status: 'verified', version: 1 },
-      ]
-    },
-    {
-      code: 'MTK',
-      name: 'Matematika',
-      gradient: 'from-violet-500 to-purple-600',
-      chapters: [
-        { id: 'mtk-matriks', num: '01', title: 'Matriks & Determinan', desc: 'Ringkasan · Materi', status: 'verified', version: 2 },
-        { id: 'mtk-transformasi', num: '02', title: 'Transformasi Geometri', desc: 'Ringkasan · Materi', status: 'verified', version: 1 },
-      ]
-    },
-  ] : [];
+  useEffect(() => {
+    if (isApiClass && classId) {
+      apiService.getMateri(classId).then(data => {
+        if (Array.isArray(data)) {
+          setApiMaterials(data.map(item => ({
+            id: item.id,
+            classId: classId,
+            subject: item.mapel?.kode || 'MATERI',
+            subjectName: item.mapel?.nama || 'Mata Pelajaran',
+            title: item.judul,
+            content: item.isi || item.versi_aktif?.isi || '',
+            num: '01',
+            status: item.versi_aktif?.status || 'verified',
+            version: item.versi_aktif?.versi || 1
+          })));
+        }
+      }).catch(() => {});
+    }
+  }, [isApiClass, classId]);
 
+  if (classId && !activeClass && !isApiClass) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in max-w-md mx-auto py-12">
+        <div className="w-16 h-16 rounded-3xl bg-danger/10 text-danger flex items-center justify-center shadow-inner">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-extrabold italic text-foreground">Akses Ditolak / Kelas Tidak Ditemukan</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Ruang kelas dengan ID <code className="text-primary font-mono bg-muted px-1.5 py-0.5 rounded">{classId}</code> tidak ditemukan atau Anda tidak terdaftar sebagai anggota di kelas ini.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-glow hover:scale-105 transition-all"
+          >
+            <span>Kembali ke Beranda</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Filter materials for current class or global + combine API materials
+  const localFiltered = (materiList || []).filter(m => {
+    if (!classId) return true;
+    return m.classId === classId || m.classId === 'global';
+  });
+  const filteredMaterials = [...apiMaterials, ...localFiltered];
+
+  const subjectsMap = {};
+  filteredMaterials.forEach((m) => {
+    const code = (m.subject || m.code || 'MATERI').toUpperCase();
+    if (!subjectsMap[code]) {
+      subjectsMap[code] = {
+        code: code,
+        name: m.subjectName || m.subject || code,
+        gradient: 'from-indigo-500 to-purple-600',
+        chapters: []
+      };
+    }
+    subjectsMap[code].chapters.push({
+      id: m.id,
+      num: String(subjectsMap[code].chapters.length + 1).padStart(2, '0'),
+      title: m.title,
+      desc: 'Ringkasan · Materi Belajar',
+      content: m.content,
+      status: m.status || 'verified',
+      version: m.version || 1
+    });
+  });
+
+  const subjects = Object.values(subjectsMap);
   const totalMaterials = subjects.reduce((acc, s) => acc + (s.chapters?.length || 0), 0);
+  const selectedMateriObj = filteredMaterials.find(m => m.id === selectedMateriId) || null;
 
   return (
     <section className="px-4 md:px-8 pt-6 space-y-6 animate-fade-in flex flex-col max-w-7xl mx-auto w-full pb-24">
@@ -136,7 +167,11 @@ export default function MateriPage({ currentRole }) {
                     </div>
 
                     <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[10px]">
-                      <MaterialVersionDropdown material={ch} />
+                      <MaterialVersionDropdown
+                        versions={[{ version: ch.version || 1, updatedAt: 'Terbaru', updatedBy: 'Owner', status: ch.status }]}
+                        activeVersion={ch.version || 1}
+                        onSelectVersion={() => {}}
+                      />
                       <button
                         onClick={() => setSelectedMateriId(ch.id)}
                         className="text-primary font-bold hover:underline flex items-center gap-1 cursor-pointer"
@@ -172,6 +207,7 @@ export default function MateriPage({ currentRole }) {
       )}
 
       <MateriModal
+        materi={selectedMateriObj}
         materiId={selectedMateriId}
         onClose={() => setSelectedMateriId(null)}
       />

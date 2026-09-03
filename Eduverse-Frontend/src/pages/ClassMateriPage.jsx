@@ -118,7 +118,7 @@ export default function ClassMateriPage({ cls, materials, currentRole, onCreateM
                   type="submit"
                   className="bg-gradient-to-r from-primary to-primary-glow text-white font-extrabold px-5 py-2 rounded-xl text-xs shadow-glow flex items-center gap-1"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> Simpan Materi
+                  Simpan Materi
                 </button>
               </div>
             </form>

@@ -4,10 +4,11 @@ import { X, Plus, Sparkles, Globe, Lock } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 
 export default function CreateClassModal({ isOpen, onClose, onCreateClass }) {
-  const { showToast, currentUser } = useAppState();
+  const { showToast, currentUser, fetchUserClasses } = useAppState();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -29,21 +30,28 @@ export default function CreateClassModal({ isOpen, onClose, onCreateClass }) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || loading) return;
 
-    onCreateClass({
-      name,
-      description,
-      isPublic,
-      bannerImage: '/assets/banner_eduverse.png',
-    }, currentUser);
-
-    showToast(`Kelas "${name}" berhasil dibuat!`);
-    setName('');
-    setDescription('');
-    onClose();
+    setLoading(true);
+    try {
+      await onCreateClass({
+        name,
+        description,
+        isPublic,
+        bannerImage: '/assets/banner_eduverse.png',
+      }, currentUser);
+      if (fetchUserClasses) await fetchUserClasses();
+      showToast(`Kelas "${name}" berhasil dibuat!`);
+      setName('');
+      setDescription('');
+      onClose();
+    } catch (err) {
+      showToast(err.message || "Gagal membuat kelas");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return createPortal(

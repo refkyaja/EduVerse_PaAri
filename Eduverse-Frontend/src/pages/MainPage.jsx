@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, LogIn, Search, BookOpen, Users, Globe, Lock, Sparkles, X, Info, ChevronDown } from 'lucide-react';
 import ClassCard from '../components/ClassCard';
@@ -8,18 +8,26 @@ import JoinClassModal from '../components/JoinClassModal';
 import { useAppState } from '../context/AppStateContext';
 
 export default function MainPage({ user, classes, userClasses = [], onCreateClass, onJoinClass }) {
-  const { currentUser } = useAppState();
+  const { currentUser, classList, fetchUserClasses } = useAppState();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // If newly registered/logged in user, start with userClasses (empty initially until created/joined)
-  const targetClasses = currentUser ? userClasses : (classes || []);
+  useEffect(() => {
+    if (fetchUserClasses) {
+      fetchUserClasses();
+    }
+  }, []);
 
-  const filteredClasses = targetClasses.filter(cls => {
-    return cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           cls.description?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Target classes uses classList from AppStateContext (synced from API)
+  const targetClasses = classList || [];
+
+  const filteredClasses = (targetClasses || []).filter(cls => {
+    if (!cls || typeof cls !== 'object') return false;
+    const nameMatch = (cls.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
+    const descMatch = (cls.description || '').toLowerCase().includes((searchQuery || '').toLowerCase());
+    return nameMatch || descMatch;
   });
 
   return (

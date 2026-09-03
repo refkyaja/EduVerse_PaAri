@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Languages, Maximize2, Minimize2, History } from 'lucide-react';
 import { MATERI_DATA } from '../data/materiData';
 
-export default function MateriModal({ materiId, onClose }) {
+export default function MateriModal({ materi, materiId, onClose }) {
   const [lang, setLang] = useState('id');
   const [version, setVersion] = useState('v2');
   const [isMaximized, setIsMaximized] = useState(false);
@@ -17,7 +17,7 @@ export default function MateriModal({ materiId, onClose }) {
     setIsMaximized(false);
     setMaxHeightVh(55);
 
-    if (materiId) {
+    if (materi || materiId) {
       const scrollY = window.scrollY;
       document.body.style.position = 'fixed';
       document.body.style.top = `-${scrollY}px`;
@@ -32,7 +32,7 @@ export default function MateriModal({ materiId, onClose }) {
         window.scrollTo(0, scrollY);
       };
     }
-  }, [materiId]);
+  }, [materi, materiId]);
 
   // Non-passive Touch Drag Listener for Mobile Sheet Handle Bar (materi.html 2666-2671)
   useEffect(() => {
@@ -83,9 +83,9 @@ export default function MateriModal({ materiId, onClose }) {
     };
   }, [materiId, isMaximized, maxHeightVh]);
 
-  if (!materiId || !MATERI_DATA[materiId]) return null;
+  if (!materiId) return null;
 
-  const data = MATERI_DATA[materiId];
+  const data = (MATERI_DATA && MATERI_DATA[materiId]) ? MATERI_DATA[materiId] : { title: 'Detail Materi', content: '<p class="text-muted-foreground p-4 text-center">Detail materi tidak ditemukan.</p>' };
   const hasEnglish = Boolean(data.contentEn);
 
   let activeContent = '';

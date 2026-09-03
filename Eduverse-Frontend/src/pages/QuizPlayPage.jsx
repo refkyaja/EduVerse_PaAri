@@ -33,17 +33,45 @@ const resolveExamMeta = (id) => {
 export default function QuizPlayPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { recordExamResult, showToast } = useAppState();
+  const { recordExamResult, showToast, quizList } = useAppState();
 
-  const examId = searchParams.get('exam') || 'pabp-bab6';
-  const questions = ALL_EXAMS_QUESTIONS[examId] || ALL_EXAMS_QUESTIONS['pabp-bab6'];
-  const meta = resolveExamMeta(examId);
-  const isBossBattle = examId.includes('matriks') || examId.includes('bab1');
+  const quizId = searchParams.get('quizId') || searchParams.get('exam') || searchParams.get('quiz');
+  const customQuiz = (quizList || []).find(q => String(q.id) === String(quizId));
+
+  const questions = customQuiz?.questions || ALL_EXAMS_QUESTIONS[quizId] || [];
+  const meta = customQuiz
+    ? { subject: customQuiz.title || 'Kuis Kelas', chapter: customQuiz.description || 'Kuis Baru' }
+    : resolveExamMeta(quizId);
+  const isBossBattle = Boolean(quizId && (quizId.includes('matriks') || quizId.includes('bab1')));
 
   // Quiz phase: 'start' | 'rolling' | 'playing' | 'finished'
   const [quizPhase, setQuizPhase] = useState('start');
   const [unlockedPowerups, setUnlockedPowerups] = useState([]);
   const [rollItems, setRollItems] = useState(['hint', 'fifty', 'shield']);
+
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in max-w-md mx-auto py-12">
+        <div className="w-16 h-16 rounded-3xl bg-warning/10 text-warning flex items-center justify-center shadow-inner">
+          <AlertTriangle className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-extrabold italic text-foreground">Soal Kuis Belum Tersedia</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Kuis ini belum memiliki daftar pertanyaan yang valid.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-glow hover:scale-105 transition-all cursor-pointer"
+          >
+            <span>Kembali</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Playing state
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -708,6 +736,25 @@ export default function QuizPlayPage() {
                       );
                     })}
                   </div>
+
+                  {/* Penjelasan / Pembahasan Soal */}
+                  {(q.hint || q.explanation || q.pembahasan) ? (
+                    <div className="mt-3 p-3.5 bg-primary/10 border border-primary/20 rounded-xl space-y-1">
+                      <div className="flex items-center gap-1.5 text-xs font-extrabold text-primary">
+                        <Lightbulb className="w-3.5 h-3.5" />
+                        <span>Pembahasan / Penjelasan Jawaban:</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {q.hint || q.explanation || q.pembahasan}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-2 p-3 bg-muted/50 border border-border/60 rounded-xl">
+                      <p className="text-xs text-muted-foreground italic">
+                        Kunci jawaban: <strong className="text-foreground">{labelLetters[q.correct]}. {q.options[q.correct]}</strong>
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })}

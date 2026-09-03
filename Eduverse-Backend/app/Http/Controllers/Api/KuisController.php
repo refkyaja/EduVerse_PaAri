@@ -14,8 +14,14 @@ use Illuminate\Http\Request;
 
 class KuisController extends Controller
 {
-    public function index($classId)
+    public function index(Request $request, $classId)
     {
+        $user = $request->user();
+        $class = ClassModel::find($classId);
+        if (!$class || !$class->hasUser($user)) {
+            return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki akses ke kuis kelas ini.'], 403);
+        }
+
         $kuis = Kuis::where('kelas_id', $classId)
             ->withCount('soal')
             ->with('creator')
@@ -30,9 +36,12 @@ class KuisController extends Controller
     public function store(Request $request, $classId)
     {
         $user = $request->user();
-        $class = ClassModel::findOrFail($classId);
+        $class = ClassModel::find($classId);
+        if (!$class) {
+            return response()->json(['status' => 'error', 'message' => 'Kelas tidak ditemukan.'], 404);
+        }
 
-        $member = $class->members()->where('user_id', $user->id)->first();
+        $member = $class->classMembers()->where('user_id', $user->id)->first();
         if (!$member || !in_array($member->role, ['owner', 'admin'])) {
             return response()->json(['message' => 'Hanya Owner atau Admin yang dapat membuat Kuis.'], 403);
         }
@@ -74,8 +83,14 @@ class KuisController extends Controller
         ], 201);
     }
 
-    public function show($classId, $id)
+    public function show(Request $request, $classId, $id)
     {
+        $user = $request->user();
+        $class = ClassModel::find($classId);
+        if (!$class || !$class->hasUser($user)) {
+            return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki akses ke kuis kelas ini.'], 403);
+        }
+
         $kuis = Kuis::where('kelas_id', $classId)
             ->where('id', $id)
             ->with(['soal.opsi', 'creator'])
@@ -90,6 +105,11 @@ class KuisController extends Controller
     public function submitAttempt(Request $request, $classId, $id)
     {
         $user = $request->user();
+        $class = ClassModel::find($classId);
+        if (!$class || !$class->hasUser($user)) {
+            return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki akses ke kuis kelas ini.'], 403);
+        }
+
         $kuis = Kuis::where('kelas_id', $classId)->where('id', $id)->firstOrFail();
 
         $validated = $request->validate([

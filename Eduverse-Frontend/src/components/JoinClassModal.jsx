@@ -4,8 +4,9 @@ import { X, LogIn, KeyRound } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 
 export default function JoinClassModal({ isOpen, onClose, onJoinClass }) {
-  const { showToast } = useAppState();
+  const { showToast, fetchUserClasses } = useAppState();
   const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -27,17 +28,25 @@ export default function JoinClassModal({ isOpen, onClose, onJoinClass }) {
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!code.trim()) return;
+    if (!code.trim() || loading) return;
 
-    const success = onJoinClass(code.trim());
-    if (success) {
-      showToast(`Berhasil bergabung ke kelas dengan kode "${code.toUpperCase()}"!`);
-      setCode('');
-      onClose();
-    } else {
-      showToast("Kode kelas tidak ditemukan. Coba periksa kembali!");
+    setLoading(true);
+    try {
+      const success = await onJoinClass(code.trim());
+      if (success) {
+        if (fetchUserClasses) await fetchUserClasses();
+        showToast(`Berhasil bergabung ke kelas dengan kode "${code.toUpperCase()}"!`);
+        setCode('');
+        onClose();
+      } else {
+        showToast("Kode kelas tidak ditemukan. Coba periksa kembali!");
+      }
+    } catch (err) {
+      showToast(err.message || "Gagal bergabung ke kelas. Coba periksa kembali kode kelas!");
+    } finally {
+      setLoading(false);
     }
   };
 

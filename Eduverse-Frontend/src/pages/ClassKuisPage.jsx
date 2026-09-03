@@ -105,7 +105,7 @@ export default function ClassKuisPage({ cls, quizzes, currentRole, onCreateQuiz 
                   type="submit"
                   className="bg-gradient-to-r from-primary to-primary-glow text-white font-extrabold px-5 py-2 rounded-xl text-xs shadow-glow flex items-center gap-1"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> Terbitkan Kuis
+                  Terbitkan Kuis
                 </button>
               </div>
             </form>

@@ -89,7 +89,7 @@ export default function AuthModal({ isOpen, onClose }) {
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <Sparkles className="w-4 h-4" />
+              <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
               <h3 className="font-extrabold text-base text-foreground">Autentikasi Laravel API</h3>

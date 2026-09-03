@@ -47,7 +47,7 @@ export default function MaterialVersionDropdown({ versions, activeVersion, onSel
                 >
                   <div>
                     <p className="font-extrabold">Versi {v.version}</p>
-                    <p className="text-[10px] text-muted-foreground">{v.updatedAt} · {v.updatedBy}</p>
+                    <p className="text-[10px] text-muted-foreground">{v.updatedAt || 'Hari ini'} · {v.reviewer?.name || v.reviewer?.username || v.creator?.name || v.creator?.username || v.updatedBy || 'Kontributor'}</p>
                   </div>
                   {v.status === 'Terverifikasi' ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-success" />

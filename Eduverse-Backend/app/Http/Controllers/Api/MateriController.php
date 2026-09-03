@@ -11,8 +11,14 @@ use Illuminate\Http\Request;
 
 class MateriController extends Controller
 {
-    public function index($classId)
+    public function index(Request $request, $classId)
     {
+        $user = $request->user();
+        $class = ClassModel::find($classId);
+        if (!$class || !$class->hasUser($user)) {
+            return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki akses ke materi kelas ini.'], 403);
+        }
+
         $materi = Materi::where('kelas_id', $classId)
             ->with(['versiAktif', 'mapel', 'creator'])
             ->get();
@@ -28,7 +34,7 @@ class MateriController extends Controller
         $user = $request->user();
         $class = ClassModel::findOrFail($classId);
 
-        $member = $class->members()->where('user_id', $user->id)->first();
+        $member = $class->classMembers()->where('user_id', $user->id)->first();
         if (!$member || !in_array($member->role, ['owner', 'admin'])) {
             return response()->json(['message' => 'Hanya Owner atau Admin yang dapat membuat materi.'], 403);
         }
@@ -80,8 +86,14 @@ class MateriController extends Controller
         ], 201);
     }
 
-    public function show($classId, $id)
+    public function show(Request $request, $classId, $id)
     {
+        $user = $request->user();
+        $class = ClassModel::find($classId);
+        if (!$class || !$class->hasUser($user)) {
+            return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki akses ke materi kelas ini.'], 403);
+        }
+
         $materi = Materi::where('kelas_id', $classId)
             ->where('id', $id)
             ->with(['versiAktif', 'versi.creator', 'versi.reviewer', 'mapel', 'creator'])
@@ -98,7 +110,7 @@ class MateriController extends Controller
         $user = $request->user();
         $class = ClassModel::findOrFail($classId);
 
-        $member = $class->members()->where('user_id', $user->id)->first();
+        $member = $class->classMembers()->where('user_id', $user->id)->first();
         if (!$member || $member->role !== 'owner') {
             return response()->json(['message' => 'Hanya Owner kelas yang dapat memverifikasi materi.'], 403);
         }

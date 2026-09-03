@@ -1,94 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronRight, HelpCircle, BookOpen } from 'lucide-react';
+import { ChevronRight, HelpCircle, BookOpen, Swords, ShieldAlert } from 'lucide-react';
 import ChapterModal from '../components/ChapterModal';
+import QuizCard from '../components/QuizCard';
 import { useAppState } from '../context/AppStateContext';
+import { apiService } from '../services/apiService';
 
 export default function QuizPickerPage({ currentRole }) {
   const { classId } = useParams();
-  const { findClass } = useAppState();
+  const { findClass, quizList, currentUser } = useAppState();
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
+  const [apiQuizzes, setApiQuizzes] = useState([]);
 
   const activeClass = classId && findClass ? findClass(classId) : null;
-  const isDemoClass = !classId || classId === 'cls-101' || classId === 'cls-102' || classId === 'cls-103';
-  const effectiveRole = currentRole || activeClass?.role || (isDemoClass ? 'owner' : 'member');
-  const canManage = effectiveRole === 'owner' || effectiveRole === 'admin';
+  const isApiClass = Boolean(classId && !String(classId).startsWith('cls-') && !isNaN(Number(classId)));
+  const userRole = String(currentRole || activeClass?.role || currentUser?.activeRole || 'member').toLowerCase();
+  const canManage = userRole === 'owner' || userRole === 'admin';
 
-  const days = isDemoClass ? [
-    {
-      day: 'Senin',
-      subjects: [
-        { id: 'inggris', code: 'ING', name: 'Bahasa Inggris', gradient: 'from-teal-400 to-emerald-600' },
-        { id: 'mtk-diskrit', code: 'DISK', name: 'Matematika Diskrit', gradient: 'from-fuchsia-500 to-purple-700' },
-      ]
-    },
-    {
-      day: 'Selasa',
-      subjects: [
-        { id: 'pabp', code: 'PABP', name: 'PABP', gradient: 'from-emerald-600 to-green-700' },
-        { id: 'ind', code: 'IND', name: 'Bahasa Indonesia', gradient: 'from-orange-500 to-pink-600' },
-      ]
-    },
-    {
-      day: 'Rabu',
-      subjects: [
-        { id: 'pwp', code: 'PWP', name: 'PWP', gradient: 'from-rose-500 to-red-600' },
-        { id: 'ppan', code: 'PPAN', name: 'Pendidikan Pancasila', gradient: 'from-amber-500 to-yellow-600' },
-      ]
-    },
-    {
-      day: 'Kamis',
-      subjects: [
-        { id: 'mtk', code: 'MTK', name: 'Matematika', gradient: 'from-violet-500 to-purple-600' },
-        { id: 'pbt', code: 'PBT', name: 'PBT', gradient: 'from-cyan-500 to-blue-600' },
-      ]
-    },
-    {
-      day: 'Jumat',
-      subjects: [
-        { id: 'cloud', code: 'CLOUD', name: 'Cloud Computing', gradient: 'from-sky-400 to-indigo-500' },
-        { id: 'sejarah', code: 'SJH', name: 'Sejarah Indonesia', gradient: 'from-stone-500 to-amber-700' },
-      ]
-    },
-  ] : [];
+  if (classId && !activeClass && !isApiClass) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in max-w-md mx-auto py-12">
+        <div className="w-16 h-16 rounded-3xl bg-danger/10 text-danger flex items-center justify-center shadow-inner">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-extrabold italic text-foreground">Akses Ditolak / Kelas Tidak Ditemukan</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Ruang kelas dengan ID <code className="text-primary font-mono bg-muted px-1.5 py-0.5 rounded">{classId}</code> tidak ditemukan atau Anda tidak terdaftar sebagai anggota di kelas ini.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-glow hover:scale-105 transition-all"
+          >
+            <span>Kembali ke Beranda</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  useEffect(() => {
+    if (isApiClass) {
+      apiService.getKuis(classId)
+        .then(res => {
+          if (res?.data && Array.isArray(res.data)) {
+            setApiQuizzes(res.data);
+          }
+        })
+        .catch(err => console.warn("Backend quizzes fetch notice:", err));
+    }
+  }, [isApiClass, classId]);
+
+  const localQuizzes = (quizList || []).filter(q => {
+    if (!classId) return true;
+    return q.classId === classId;
+  }) || [];
+  const allQuizzes = isApiClass
+    ? apiQuizzes.map(q => ({
+        id: q.id,
+        classId: classId,
+        title: q.judul,
+        timeLimit: q.batas_waktu || 30,
+        questionsCount: q.jumlah_soal || q.soal_count || 5,
+        attemptsCount: 0,
+      }))
+    : localQuizzes;
+  
 
   return (
     <section className="px-4 md:px-8 pt-6 space-y-6 animate-fade-in flex flex-col max-w-7xl mx-auto w-full pb-24">
       <div>
-        <h1 className="text-2xl md:text-3xl font-extrabold italic">Pilih Ujian</h1>
-        <p className="text-sm text-muted-foreground mt-1">Kerjakan ulangan untuk dapatkan XP, naik level, dan tantang boss.</p>
+        <h1 className="text-2xl md:text-3xl font-extrabold italic">Pilih Ujian &amp; Kuis</h1>
+        <p className="text-sm text-muted-foreground mt-1">Kerjakan ulangan untuk dapatkan XP, naik level, dan tingkatkan pemahaman.</p>
       </div>
 
-      {days.length > 0 ? (
-        <div className="space-y-6">
-          {days.map((d) => (
-            <div key={d.day} className="space-y-3">
-              <h2 className="text-sm font-extrabold uppercase tracking-widest text-primary flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                Jadwal {d.day}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {d.subjects.map((sub) => (
-                  <button
-                    key={sub.id}
-                    onClick={() => setSelectedSubjectId(sub.id)}
-                    className="group bg-card border border-border hover:border-primary/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all text-left flex items-center justify-between cursor-pointer"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${sub.gradient} flex items-center justify-center text-white font-extrabold text-xs shadow-md shrink-0`}>
-                        {sub.code}
-                      </div>
-                      <div>
-                        <h3 className="font-extrabold text-sm text-foreground group-hover:text-primary transition-colors">{sub.name}</h3>
-                        <p className="text-[10px] text-muted-foreground font-medium">Klik untuk memilih bab kuis</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+      {/* List Kuis Terbitan Baru / Diterbitkan di Kelas ini */}
+      {allQuizzes.length > 0 ? (
+        <div className="space-y-3">
+          <h2 className="text-sm font-extrabold uppercase tracking-widest text-primary flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary"></span>
+            Daftar Kuis Diterbitkan ({allQuizzes.length})
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {allQuizzes.map((quiz) => (
+              <QuizCard key={quiz.id} quiz={quiz} classId={classId} />
+            ))}
+          </div>
         </div>
       ) : (
         <div className="bg-card rounded-3xl p-10 text-center space-y-3 shadow-sm border border-border">
@@ -100,7 +100,7 @@ export default function QuizPickerPage({ currentRole }) {
           {canManage && (
             <div className="pt-2">
               <Link
-                to={classId ? `/class/${classId}/profile` : "/profile"}
+                to={classId ? `/class/${classId}/add-quiz` : "/profile"}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-2xl shadow-glow hover:scale-105 transition-all"
               >
                 <span>Kelola &amp; Buat Kuis Baru</span>
@@ -110,11 +110,6 @@ export default function QuizPickerPage({ currentRole }) {
           )}
         </div>
       )}
-
-      <ChapterModal
-        subjectId={selectedSubjectId}
-        onClose={() => setSelectedSubjectId(null)}
-      />
     </section>
   );
 }

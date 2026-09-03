@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronRight, Lightbulb, Target, Shield, Snowflake, School, ArrowLeft, BookOpen } from 'lucide-react';
+import { ChevronRight, Lightbulb, Target, Shield, Snowflake, BookOpen, ShieldAlert } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 import PowerUpModal from '../components/PowerUpModal';
 
@@ -10,15 +10,40 @@ export default function HomePage() {
   const [isPowerUpOpen, setIsPowerUpOpen] = useState(false);
 
   const activeClass = classId && findClass ? findClass(classId) : null;
-  const isDemoClass = !classId || classId === 'cls-101' || classId === 'cls-102' || classId === 'cls-103';
-  const classXp = isDemoClass ? appState.xp : (getClassXp ? getClassXp(classId) : 0);
+  const isApiClass = Boolean(classId && !String(classId).startsWith('cls-') && !isNaN(Number(classId)));
 
+  if (classId && !activeClass && !isApiClass) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in max-w-md mx-auto py-12">
+        <div className="w-16 h-16 rounded-3xl bg-danger/10 text-danger flex items-center justify-center shadow-inner">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-extrabold italic text-foreground">Akses Ditolak / Kelas Tidak Ditemukan</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Ruang kelas dengan ID <code className="text-primary font-mono bg-muted px-1.5 py-0.5 rounded">{classId}</code> tidak ditemukan atau Anda tidak terdaftar sebagai anggota di kelas ini.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-glow hover:scale-105 transition-all"
+          >
+            <span>Kembali ke Beranda</span>
+            <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const classXp = classId && getClassXp ? getClassXp(classId) : appState.xp;
   const levelInfo = getLevelInfo(classXp);
   const progressPercent = Math.min(100, Math.max(0, (levelInfo.progress / levelInfo.max) * 100));
 
   return (
-    <section className="px-4 md:px-8 pt-6 space-y-6 animate-fade-in flex flex-col max-w-7xl mx-auto w-full">
-      {/* Grid for Hero Card & Boss Battle - 2 columns side-by-side even on mobile */}
+    <section className="px-4 md:px-8 pt-6 space-y-6 animate-fade-in flex flex-col max-w-7xl mx-auto w-full pb-24">
+      {/* Grid for Hero Card & Status - 2 columns side-by-side even on mobile */}
       <div className="grid grid-cols-2 gap-3 md:gap-6 items-stretch">
         {/* Hero Level Card */}
         <div className="bg-gradient-to-br from-primary via-primary to-primary-glow rounded-2xl md:rounded-3xl p-3.5 sm:p-4 md:p-5 text-primary-foreground shadow-glow relative overflow-hidden flex flex-col justify-between">
@@ -45,36 +70,14 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Boss Battle */}
-        {isDemoClass ? (
-          <div className="bg-dark-surface rounded-2xl md:rounded-3xl p-3.5 sm:p-4 md:p-5 text-white border-2 border-brand-blue/30 relative overflow-hidden shadow-blue-glow flex flex-col justify-between">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.25),transparent_60%)]"></div>
-            <div className="relative z-10">
-              <div className="flex flex-col sm:flex-row justify-between items-start gap-1">
-                <div>
-                  <span className="bg-danger text-white text-[8px] sm:text-[9px] md:text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest animate-pulse inline-block">⚔ Boss Battle</span>
-                  <h3 className="text-xs sm:text-base md:text-lg font-extrabold mt-0.5 sm:mt-1 italic">Dreadlord Matriks</h3>
-                </div>
-                <div className="bg-white/10 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[9px] md:text-xs font-mono backdrop-blur-sm border border-white/10 shrink-0">HP 450/500</div>
-              </div>
-              <div className="mt-1.5 sm:mt-2.5 md:mt-3 flex gap-2 md:gap-3 items-center">
-                <img src="/assets/boss-matrices.png" alt="Boss" className="w-9 h-9 sm:w-12 sm:h-12 md:w-16 md:h-16 object-contain animate-float drop-shadow-[0_0_20px_rgba(139,92,246,0.6)]" />
-                <div className="flex-1">
-                  <p className="text-[9px] sm:text-[10px] md:text-xs text-white/80 italic mb-1 hidden sm:block">"Determinanku tak akan pernah bisa kau pecahkan!"</p>
-                  <Link to="/quiz/play" className="inline-block w-full text-center bg-gradient-to-r from-primary to-primary-glow hover:scale-105 active:scale-95 text-white font-extrabold py-1.5 md:py-2 rounded-xl text-[9px] sm:text-[10px] md:text-xs shadow-glow transition-all">
-                    MASUKI ARENA
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-card rounded-2xl md:rounded-3xl p-3.5 sm:p-4 md:p-5 border border-border flex flex-col justify-center items-center text-center space-y-1 sm:space-y-1.5">
-            <Shield className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-muted-foreground" />
-            <h4 className="font-extrabold text-xs sm:text-sm leading-snug">Belum Ada Boss Battle Aktif</h4>
-            <p className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground max-w-xs leading-tight">Owner atau Admin belum menambahkan kuis tantangan boss di kelas ini.</p>
-          </div>
-        )}
+        {/* Status Card */}
+        <div className="bg-card rounded-2xl md:rounded-3xl p-3.5 sm:p-4 md:p-5 border border-border flex flex-col justify-center items-center text-center space-y-1 sm:space-y-1.5 shadow-sm">
+          <Shield className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-muted-foreground" />
+          <h4 className="font-extrabold text-xs sm:text-sm leading-snug">Status Kelas Active</h4>
+          <p className="text-[9px] sm:text-[10px] md:text-xs text-muted-foreground max-w-xs leading-tight">
+            {activeClass ? activeClass.name : 'Ruang Pembelajaran EduVerse'}
+          </p>
+        </div>
       </div>
 
       {/* Power-Up Section */}
@@ -109,46 +112,12 @@ export default function HomePage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-extrabold text-lg">Mata Pelajaran</h3>
-          {isDemoClass && (
-            <Link to="/materi" className="text-primary text-xs font-bold flex items-center gap-0.5 hover:underline">
-              Lihat Semua <ChevronRight className="w-3 h-3" />
-            </Link>
-          )}
         </div>
-        {isDemoClass ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-            <Link to="/materi" className="bg-card border border-border rounded-2xl p-4 flex gap-4 items-center shadow-sm hover:shadow-md hover:border-primary/30 transition-all active:scale-[0.98] block">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 grid place-items-center text-white font-extrabold text-xs shadow-md shrink-0">PWP</div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-extrabold italic truncate">Pwp</h4>
-                <p className="text-xs text-muted-foreground truncate">Kewirausahaan &amp; Produk Kreatif</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </Link>
-            <Link to="/materi" className="bg-card border border-border rounded-2xl p-4 flex gap-4 items-center shadow-sm hover:shadow-md hover:border-primary/30 transition-all active:scale-[0.98] block">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 grid place-items-center text-white font-extrabold text-xs shadow-md shrink-0">PPAN</div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-extrabold italic truncate">Ppan</h4>
-                <p className="text-xs text-muted-foreground truncate">Pendidikan Pancasila</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </Link>
-            <Link to="/materi" className="bg-card border border-border rounded-2xl p-4 flex gap-4 items-center shadow-sm hover:shadow-md hover:border-primary/30 transition-all active:scale-[0.98] block">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 grid place-items-center text-white font-extrabold text-xs shadow-md shrink-0">MTK</div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-extrabold italic truncate">Matematika</h4>
-                <p className="text-xs text-muted-foreground truncate">Matriks &amp; Determinan</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-            </Link>
-          </div>
-        ) : (
-          <div className="bg-card rounded-3xl p-8 md:p-10 border border-border flex flex-col items-center justify-center text-center space-y-2 shadow-sm">
-            <BookOpen className="w-8 h-8 text-muted-foreground/60" />
-            <p className="font-extrabold text-sm text-foreground">Tidak ada pelajaran</p>
-            <p className="text-xs text-muted-foreground max-w-xs">Materi pelajaran belum ditambahkan oleh Owner atau Admin di kelas ini.</p>
-          </div>
-        )}
+        <div className="bg-card rounded-3xl p-8 md:p-10 border border-border flex flex-col items-center justify-center text-center space-y-2 shadow-sm">
+          <BookOpen className="w-8 h-8 text-muted-foreground/60" />
+          <p className="font-extrabold text-sm text-foreground">Tidak Ada Pelajaran</p>
+          <p className="text-xs text-muted-foreground max-w-xs">Materi pelajaran belum ditambahkan oleh Owner atau Admin di kelas ini.</p>
+        </div>
       </div>
 
       <PowerUpModal isOpen={isPowerUpOpen} onClose={() => setIsPowerUpOpen(false)} />

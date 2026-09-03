@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AppStateProvider } from './context/AppStateContext';
 import AppRoutes from './routes/AppRoutes';
+import { authService } from './services/authService';
+import { apiService } from './services/apiService';
 import {
   INITIAL_USER,
   INITIAL_CLASSES,
@@ -14,38 +16,8 @@ import {
 
 export default function App() {
   const [user, setUser] = useState(INITIAL_USER);
-  const [classes, setClasses] = useState(() => {
-    try {
-      const stored = localStorage.getItem('eduverse_classes');
-      if (stored) return JSON.parse(stored);
-    } catch (e) {
-      console.error('Failed to parse classes:', e);
-    }
-    return INITIAL_CLASSES;
-  });
-
-  const [userClasses, setUserClasses] = useState(() => {
-    try {
-      const stored = localStorage.getItem('eduverse_user_classes');
-      if (stored) return JSON.parse(stored);
-    } catch (e) {
-      console.error('Failed to parse userClasses:', e);
-    }
-    return [];
-  });
-
-  // Sync classes to localStorage
-  React.useEffect(() => {
-    try {
-      localStorage.setItem('eduverse_classes', JSON.stringify(classes));
-    } catch (e) {}
-  }, [classes]);
-
-  React.useEffect(() => {
-    try {
-      localStorage.setItem('eduverse_user_classes', JSON.stringify(userClasses));
-    } catch (e) {}
-  }, [userClasses]);
+  const [classes, setClasses] = useState([]);
+  const [userClasses, setUserClasses] = useState([]);
 
   const [announcements, setAnnouncements] = useState(INITIAL_ANNOUNCEMENTS);
   const [materials, setMaterials] = useState(INITIAL_MATERIALS);
@@ -57,7 +29,23 @@ export default function App() {
     setUser(prev => ({ ...prev, activeRole: newRole }));
   };
 
-  const handleCreateClass = (clsData, currentUser) => {
+  const handleCreateClass = async (clsData, currentUser) => {
+    try {
+      if (authService.getToken()) {
+        const created = await apiService.createClass({
+          name: clsData.name,
+          description: clsData.description || 'Kelas baru di EduVerse',
+          category: clsData.category || 'General',
+          visibility: clsData.isPublic ? 'public' : 'private',
+        });
+        setClasses(prev => [created, ...prev]);
+        setUserClasses(prev => [created, ...prev]);
+        return created;
+      }
+    } catch (e) {
+      console.error("API createClass failed:", e);
+      throw e;
+    }
     const creatorName = currentUser?.name || currentUser?.username || user.name;
     const newClass = {
       id: `cls-${Date.now()}`,
@@ -77,7 +65,24 @@ export default function App() {
     return newClass;
   };
 
-  const handleJoinClass = (code) => {
+  const handleJoinClass = async (code) => {
+    try {
+      if (authService.getToken()) {
+        const joined = await apiService.joinClass(code);
+        setClasses(prev => {
+          const exists = prev.some(c => c.id === joined.id);
+          return exists ? prev.map(c => c.id === joined.id ? joined : c) : [joined, ...prev];
+        });
+        setUserClasses(prev => {
+          const exists = prev.some(c => c.id === joined.id);
+          return exists ? prev.map(c => c.id === joined.id ? joined : c) : [joined, ...prev];
+        });
+        return true;
+      }
+    } catch (e) {
+      console.error("API joinClass failed:", e);
+      throw e;
+    }
     const found = classes.find(c => c.code === code.toUpperCase());
     if (found) {
       setClasses(prev => prev.map(c => c.id === found.id ? { ...c, memberCount: c.memberCount + 1 } : c));

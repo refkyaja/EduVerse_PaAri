@@ -12,7 +12,11 @@ class LeaderboardController extends Controller
 {
     public function index(Request $request, $classId)
     {
-        $class = ClassModel::findOrFail($classId);
+        $user = $request->user();
+        $class = ClassModel::find($classId);
+        if (!$class || !$class->hasUser($user)) {
+            return response()->json(['status' => 'error', 'message' => 'Anda tidak memiliki akses ke leaderboard kelas ini.'], 403);
+        }
 
         // Aggregate total XP earned by each member in this class
         $rankings = DB::table('class_members')

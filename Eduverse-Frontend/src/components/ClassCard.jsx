@@ -8,9 +8,7 @@ export default function ClassCard({ cls }) {
   if (!cls) return null;
 
   const bannerImgSrc = cls.bannerImage || '/assets/banner_eduverse.png';
-  const displayOwner = (cls.role === 'owner' || cls.ownerId === currentUser?.id)
-    ? (currentUser?.name || currentUser?.username || cls.ownerName || 'Refky Satria')
-    : (cls.ownerName || 'EduVerse Class');
+  const displayOwner = cls.owner?.name || cls.owner?.username || cls.ownerName || 'Pemilik Kelas';
 
   return (
     <div className="bg-card border border-border rounded-3xl shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">

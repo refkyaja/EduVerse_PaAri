@@ -95,7 +95,7 @@ export default function MaterialDetailPage({ materials, currentRole, onUpdateMat
         <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground pt-3 border-t border-border flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <User className="w-4 h-4 text-primary" />
-            <span>Dibuat oleh: <strong className="text-foreground">{currentVerObj.updatedBy || material.createdBy}</strong></span>
+            <span>Dibuat oleh: <strong className="text-foreground">{currentVerObj.reviewer?.name || currentVerObj.creator?.name || currentVerObj.updatedBy || material.createdBy || 'Kontributor'}</strong></span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] bg-muted px-2.5 py-1 rounded-lg">
@@ -179,7 +179,7 @@ export default function MaterialDetailPage({ materials, currentRole, onUpdateMat
                 type="submit"
                 className="bg-gradient-to-r from-primary to-primary-glow text-white font-extrabold px-5 py-2 rounded-xl text-xs shadow-glow flex items-center gap-1"
               >
-                <Sparkles className="w-3.5 h-3.5" /> Terbitkan Versi Baru
+                Terbitkan Versi Baru
               </button>
             </div>
           </form>

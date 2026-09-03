@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, Sparkles, Lock, Mail, User, AtSign, AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
+import logoImg from '../assets/companion.png';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -60,9 +61,13 @@ export default function RegisterPage() {
       <div className="w-full max-w-md mx-auto bg-card border border-border rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 my-auto">
         <div className="text-center space-y-2">
           <img
-            src="/assets/companion.png"
+            src={logoImg}
             alt="EduVerse Logo"
             className="w-16 h-16 mx-auto object-contain animate-float"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = '/assets/companion.png';
+            }}
           />
           <h1 className="text-2xl md:text-3xl font-extrabold italic tracking-tight bg-gradient-to-r from-primary to-primary-glow bg-clip-text text-transparent">
             Daftar Akun Baru
