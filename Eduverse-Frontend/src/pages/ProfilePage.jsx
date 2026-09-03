@@ -33,7 +33,7 @@ export default function ProfilePage({ initialTab }) {
   const isApiClass = Boolean(routeClassId && !String(routeClassId).startsWith('cls-') && !isNaN(Number(routeClassId)));
   const isDemoClass = !isApiClass;
 
-  const activeRole = activeClass?.role || currentUser?.activeRole || 'owner';
+  const activeRole = activeClass?.role || currentUser?.activeRole || currentUser?.role || 'member';
   const [activeTab, setActiveTab] = useState(getTabFromPath());
   const [isManagementOpen, setIsManagementOpen] = useState(true);
 
@@ -168,14 +168,14 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
       if (isApiClass && routeClassId) {
         try {
           const list = await apiService.getMembers(routeClassId);
-          if (Array.isArray(list) && list.length > 0) {
+          if (Array.isArray(list)) {
             setDbMemberList(list.map(m => ({
               id: m.id || m.user_id,
-              name: m.user?.name || m.name || 'Anggota Kelas',
-              username: m.user?.email ? `@${m.user.email.split('@')[0]}` : (m.username || '@user'),
-              email: m.user?.email || m.email,
+              name: m.name || m.user?.name || 'Anggota Kelas',
+              username: m.username ? (m.username.startsWith('@') ? m.username : `@${m.username}`) : (m.email ? `@${m.email.split('@')[0]}` : '@user'),
+              email: m.email || m.user?.email,
               role: m.role || 'member',
-              avatar: m.user?.avatar || m.avatar
+              avatar: m.profile_photo || m.user?.avatar || m.avatar
             })));
             return;
           }
@@ -209,7 +209,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
           await apiService.demoteAdmin(routeClassId, userId);
         }
       }
-      setDbMemberList(prev => prev.map(mem => mem.id === userId ? { ...mem, role: newRole } : mem));
+      setDbMemberList(prev => prev.map(mem => String(mem.id) === String(userId) ? { ...mem, role: String(newRole).toLowerCase() } : mem));
       showToast(`Role anggota berhasil diubah menjadi ${newRole}`);
     } catch (err) {
       showToast(err.message || 'Gagal mengubah role anggota', 'error');
@@ -221,7 +221,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
       if (isApiClass && routeClassId) {
         await apiService.kickMember(routeClassId, userId);
       }
-      setDbMemberList(prev => prev.filter(mem => mem.id !== userId));
+      setDbMemberList(prev => prev.filter(mem => String(mem.id) !== String(userId)));
       showToast('Anggota berhasil dikeluarkan dari kelas.');
     } catch (err) {
       showToast(err.message || 'Gagal mengeluarkan anggota', 'error');
@@ -256,7 +256,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
 
   // Audit Trail Logs
   const [auditLogs, setAuditLogs] = useState([
-    { id: 1, user: currentUser?.name || 'Owner', role: 'OWNER', action: `Membuat Ruang Kelas "${activeClass?.name || 'Kelas Baru'}"`, time: 'Baru saja' }
+    { id: 1, user: activeClass?.ownerName || 'Pemilik Kelas', role: 'OWNER', action: `Membuat Ruang Kelas "${activeClass?.name || 'Kelas Baru'}"`, time: 'Awal Pembuatan' }
   ]);
 
   // Load backend log_aktivitas on mount if available
@@ -378,18 +378,22 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
       if (isApiClass && routeClassId) {
         updatedRes = await apiService.updateClass(routeClassId, { name: className, description: classDesc });
       }
+      const finalName = updatedRes?.name || className;
+      const finalDesc = updatedRes?.description || classDesc;
       const finalCode = updatedRes?.code || classCode;
-      if (updatedRes?.code) {
-        setClassCode(updatedRes.code);
-      }
+
+      setClassName(finalName);
+      setClassDesc(finalDesc);
+      if (updatedRes?.code) setClassCode(updatedRes.code);
+
       if (updateClassInfo) {
-        updateClassInfo(routeClassId || activeClass?.id, { name: className, description: classDesc, code: finalCode });
+        updateClassInfo(routeClassId || activeClass?.id, { name: finalName, description: finalDesc, code: finalCode });
       }
       const newLog = {
         id: Date.now(),
         user: currentUser?.name || 'Owner',
         role: activeRole.toUpperCase(),
-        action: `Memperbarui nama kelas menjadi "${className}"`,
+        action: `Memperbarui nama kelas menjadi "${finalName}"`,
         time: 'Baru saja'
       };
       setAuditLogs([newLog, ...auditLogs]);
@@ -398,8 +402,18 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
       if (updateClassInfo) {
         updateClassInfo(routeClassId || activeClass?.id, { name: className, description: classDesc, code: classCode });
       }
-      showToast("Informasi kelas berhasil diperbarui!");
+      showToast(err.message || "Gagal memperbarui kelas", 'error');
     }
+  };
+
+  const [copiedClassCode, setCopiedClassCode] = useState(false);
+
+  const handleCopyClassCode = () => {
+    if (!classCode) return;
+    navigator.clipboard.writeText(classCode);
+    setCopiedClassCode(true);
+    showToast(`Kode kelas "${classCode}" berhasil disalin!`);
+    setTimeout(() => setCopiedClassCode(false), 2000);
   };
 
   const [isRegenConfirmOpen, setIsRegenConfirmOpen] = useState(false);
@@ -413,7 +427,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
       }
       setClassCode(newC);
       if (updateClassInfo) {
-        updateClassInfo(routeClassId || activeClass?.id, { code: newC });
+        updateClassInfo(routeClassId || activeClass?.id, { code: newC, name: className, description: classDesc });
       }
       const newLog = {
         id: Date.now(),
@@ -423,9 +437,9 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
         time: 'Baru saja'
       };
       setAuditLogs([newLog, ...auditLogs]);
-      showToast(`Kode kelas baru dibuat: "${newC}"`);
+      showToast(`Kode kelas baru berhasil dibuat: "${newC}"`);
     } catch (err) {
-      showToast(err.message || "Gagal meregenerasi kode kelas");
+      showToast(err.message || "Gagal meregenerasi kode kelas", 'error');
     }
   };
 
@@ -1191,6 +1205,31 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
     );
   }
 
+  // Security Protection 3: Kelola Admin & Anggota (Owner Only)
+  if (activeTab === 'members' && !isOwner) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in max-w-md mx-auto py-12">
+        <div className="w-16 h-16 rounded-3xl bg-warning/10 text-warning flex items-center justify-center shadow-inner">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-xl font-extrabold italic text-foreground">Akses Terbatas (Owner Only)</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Menu Kelola Admin &amp; Anggota hanya dapat diakses oleh Pemilik (Owner) Kelas.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground font-extrabold text-xs rounded-xl shadow-glow hover:scale-105 transition-all cursor-pointer"
+          >
+            <span>Kembali ke Ringkasan Kelas</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <section className="px-4 md:px-8 pt-6 space-y-6 animate-fade-in flex flex-col max-w-7xl mx-auto w-full pb-24">
       {/* Header Banner Identity (Twitter/X Style Cover Banner & Round Profile - Ultra Flattened Mobile Landscape) */}
@@ -1211,13 +1250,24 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
             {/* FOTO PROFIL BULAT (Menggunakan <img> asli bulat sempurna menumpuk di atas banner) */}
             <div className="relative -mt-8 sm:-mt-12 md:-mt-18 z-20 shrink-0">
               <img 
-                src={currentUser?.profile_photo || currentUser?.avatar || currentUser?.photo_url || currentUser?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400'} 
+                src={
+                  (currentUser?.profile_photo || currentUser?.avatar) && !String(currentUser?.profile_photo || currentUser?.avatar).includes('unsplash')
+                    ? (currentUser.profile_photo || currentUser.avatar)
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || currentUser?.username || 'User')}&background=8b5cf6&color=ffffff&bold=true&size=256`
+                } 
                 alt="Foto Profil" 
                 className="w-16 h-16 sm:w-24 sm:h-24 md:w-34 md:h-34 rounded-full object-cover border-4 border-card bg-muted shadow-2xl block hover:opacity-95 transition cursor-pointer"
               />
-              <div className="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 bg-gradient-to-br from-amber-300 via-xp-gold to-amber-500 text-black w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-extrabold text-[9px] sm:text-xs shadow-lg border-2 border-card shrink-0">
-                👑
-              </div>
+              {isOwner && (
+                <div className="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 bg-gradient-to-br from-amber-300 via-xp-gold to-amber-500 text-black w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-extrabold text-[9px] sm:text-xs shadow-lg border-2 border-card shrink-0" title="Pemilik Kelas (Owner)">
+                  👑
+                </div>
+              )}
+              {isAdmin && (
+                <div className="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600 text-white w-5 h-5 sm:w-7 sm:h-7 rounded-full flex items-center justify-center font-extrabold text-[9px] sm:text-xs shadow-lg border-2 border-card shrink-0" title="Pengelola Kelas (Admin)">
+                  🛡️
+                </div>
+              )}
             </div>
 
             {/* Badges Role & Pangkat Level di Sebelah Kanan */}
@@ -1377,17 +1427,19 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                       </button>
                     )}
 
-                    <button
-                      onClick={() => handleTabClick('members', 'members')}
-                      className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
-                        activeTab === 'members'
-                          ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'bg-background hover:bg-muted text-foreground'
-                      }`}
-                    >
-                      <Users className="w-4 h-4 shrink-0" />
-                      <span className="flex-1">Kelola Admin &amp; Anggota</span>
-                    </button>
+                    {isOwner && (
+                      <button
+                        onClick={() => handleTabClick('members', 'members')}
+                        className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                          activeTab === 'members'
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'bg-background hover:bg-muted text-foreground'
+                        }`}
+                      >
+                        <Users className="w-4 h-4 shrink-0" />
+                        <span className="flex-1">Kelola Admin &amp; Anggota</span>
+                      </button>
+                    )}
 
                     <button
                       onClick={() => handleTabClick('audit_log', 'audit-log')}
@@ -1639,13 +1691,24 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                     <p className="text-xs text-muted-foreground mt-1">Bagikan kode ini kepada siswa agar bisa bergabung ke kelas ini.</p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleRegenCode}
-                    className="bg-primary/10 text-primary font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 hover:bg-primary/20 transition-all shrink-0"
-                  >
-                    <RefreshCcw className="w-4 h-4" /> Regenerate Kode Baru
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCopyClassCode}
+                      className="bg-muted text-foreground font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 hover:bg-muted/80 transition-all cursor-pointer shadow-xs"
+                      title="Salin Kode Kelas ke Clipboard"
+                    >
+                      {copiedClassCode ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-primary" />}
+                      <span>{copiedClassCode ? 'Tersalin!' : 'Salin Kode'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRegenCode}
+                      className="bg-primary/10 text-primary font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 hover:bg-primary/20 transition-all shrink-0 cursor-pointer"
+                    >
+                      <RefreshCcw className="w-4 h-4" /> Regenerate Kode Baru
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2684,17 +2747,25 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
 
           {/* VIEW 6: PANEL VERIFIKASI MATERI ADMIN (KHUSUS OWNER) */}
           {activeTab === 'verification' && isOwner && (
-            <div className="bg-warning/10 border-2 border-warning/30 rounded-3xl p-6 space-y-6 animate-fade-in">
-              <div className="border-b border-warning/20 pb-3">
-                <h3 className="font-extrabold text-lg text-warning flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5" /> Panel Verifikasi Materi Admin (Khusus Owner)
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">Setujui atau minta perbaikan materi yang diajukan oleh Admin kelas.</p>
+            <div className="bg-card border border-border/80 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 animate-fade-in">
+              {/* Header Title with Gold/Purple Badge */}
+              <div className="flex items-start sm:items-center gap-3.5 border-b border-border/60 pb-5">
+                <div className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-xs shrink-0">
+                  <ShieldCheck className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-extrabold text-lg tracking-tight text-foreground">Panel Verifikasi Materi Admin</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    Review, setujui, atau minta perbaikan materi yang diajukan oleh Admin kelas.
+                  </p>
+                </div>
               </div>
 
               {/* Side-by-Side Preview Comparison Modal / Box */}
               {verifyingMaterial && (
-                <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 animate-fade-in">
+                <div className="bg-background border border-border rounded-3xl p-6 shadow-xl space-y-4 animate-fade-in">
                   <div className="flex items-center justify-between border-b border-border pb-3 flex-wrap gap-2">
                     <div>
                       <span className="text-[10px] font-extrabold bg-primary/10 text-primary px-2.5 py-1 rounded-md uppercase">
@@ -2715,7 +2786,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                   {/* 2-Column Grid Comparison */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* LEFT COLUMN: Versi Sebelumnya */}
-                    <div className="p-4 rounded-2xl border border-border bg-background space-y-3">
+                    <div className="p-4 rounded-2xl border border-border bg-card space-y-3">
                       <div className="flex items-center justify-between border-b border-border/60 pb-2">
                         <span className="font-extrabold text-xs text-muted-foreground flex items-center gap-1.5">
                           <History className="w-4 h-4 text-muted-foreground" />
@@ -2728,7 +2799,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                       <div className="text-xs text-muted-foreground">
                         <p className="font-semibold">Pembuat: <strong>{verifyingMaterial.prevVersion?.author || 'Owner'}</strong></p>
                       </div>
-                      <div className="p-3 rounded-xl bg-card border border-border/50 text-xs leading-relaxed text-foreground min-h-[120px]">
+                      <div className="p-3 rounded-xl bg-background border border-border/50 text-xs leading-relaxed text-foreground min-h-[120px]">
                         {verifyingMaterial.prevVersion?.content ? (
                           <div dangerouslySetInnerHTML={{ __html: verifyingMaterial.prevVersion.content }} />
                         ) : (
@@ -2738,20 +2809,20 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                     </div>
 
                     {/* RIGHT COLUMN: Versi Baru (Pengajuan Admin) */}
-                    <div className="p-4 rounded-2xl border-2 border-warning/40 bg-warning/5 space-y-3">
-                      <div className="flex items-center justify-between border-b border-warning/20 pb-2">
-                        <span className="font-extrabold text-xs text-warning flex items-center gap-1.5">
-                          <FileText className="w-4 h-4 text-warning" />
+                    <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-3">
+                      <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+                        <span className="font-extrabold text-xs text-amber-500 flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-amber-500" />
                           Versi Baru (v{verifyingMaterial.newVersion?.version || 2})
                         </span>
-                        <span className="bg-warning/20 text-warning font-extrabold text-[10px] px-2 py-0.5 rounded-full">
+                        <span className="bg-amber-500/20 text-amber-500 font-extrabold text-[10px] px-2 py-0.5 rounded-full">
                           Menunggu Verifikasi
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground">
                         <p className="font-semibold">Diajukan Oleh Admin: <strong>{verifyingMaterial.author}</strong></p>
                       </div>
-                      <div className="p-3 rounded-xl bg-card border border-warning/30 text-xs leading-relaxed text-foreground min-h-[120px]">
+                      <div className="p-3 rounded-xl bg-card border border-amber-500/30 text-xs leading-relaxed text-foreground min-h-[120px]">
                         {verifyingMaterial.newVersion?.content ? (
                           <div dangerouslySetInnerHTML={{ __html: verifyingMaterial.newVersion.content }} />
                         ) : (
@@ -2789,7 +2860,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
               {pendingMaterials.length > 0 ? (
                 <div className="space-y-3">
                   {pendingMaterials.map(item => (
-                    <div key={item.id} className="bg-card border border-border rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                    <div key={item.id} className="bg-background border border-border rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-primary/40 transition-colors">
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-extrabold bg-primary/10 text-primary px-2 py-0.5 rounded-md">{item.subject}</span>
@@ -2822,8 +2893,16 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                   ))}
                 </div>
               ) : (
-                <div className="bg-card border border-border rounded-2xl p-8 text-center text-xs text-muted-foreground">
-                  Tidak ada pengajuan materi yang menunggu verifikasi saat ini.
+                <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-border bg-muted/20 flex flex-col items-center justify-center space-y-3">
+                  <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shadow-inner">
+                    <CheckCircle2 className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-1 max-w-sm">
+                    <p className="font-extrabold text-sm text-foreground">Semua Materi Telah Terverifikasi</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Tidak ada pengajuan materi yang menunggu verifikasi saat ini.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

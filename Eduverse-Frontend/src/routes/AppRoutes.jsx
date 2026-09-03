@@ -135,7 +135,9 @@ export default function AppRoutes({
         path="/class/:classId/anggota"
         element={
           <ProtectedRoute>
-            <ProfilePage initialTab="members_view" />
+            <MobileLayout>
+              <ProfilePage initialTab="members_view" />
+            </MobileLayout>
           </ProtectedRoute>
         }
       />

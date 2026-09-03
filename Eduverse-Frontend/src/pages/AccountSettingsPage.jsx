@@ -23,8 +23,6 @@ import {
 import { useAppState } from '../context/AppStateContext';
 import ImageCropperModal from '../components/ImageCropperModal';
 
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
-
 export default function AccountSettingsPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -34,8 +32,18 @@ export default function AccountSettingsPage() {
     name: 'Refky Satria',
     username: 'refky',
     email: 'refky@eduverse.id',
-    avatar: DEFAULT_AVATAR,
     bio: 'Pelajar & Tech Enthusiast | Suka kuis & kompetisi',
+  };
+
+  const getInitialAvatar = (user) => {
+    const name = user?.name || user?.username || 'User';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=8b5cf6&color=ffffff&bold=true&size=256`;
+  };
+
+  const getAvatarUrl = (user) => {
+    const raw = user?.profile_photo || user?.avatar;
+    if (raw && !String(raw).includes('unsplash')) return raw;
+    return getInitialAvatar(user);
   };
 
   // Form states
@@ -43,7 +51,7 @@ export default function AccountSettingsPage() {
   const [username, setUsername] = useState(activeUser.username || '');
   const [email, setEmail] = useState(activeUser.email || '');
   const [bio, setBio] = useState(activeUser.bio || '');
-  const [selectedAvatar, setSelectedAvatar] = useState(activeUser.profile_photo || activeUser.avatar || DEFAULT_AVATAR);
+  const [selectedAvatar, setSelectedAvatar] = useState(getAvatarUrl(activeUser));
   const [activeTab, setActiveTab] = useState('profile'); // 'profile', 'edit', 'security', 'theme'
   const [cropperOpen, setCropperOpen] = useState(false);
   const [tempImageSrc, setTempImageSrc] = useState(null);
@@ -66,12 +74,12 @@ export default function AccountSettingsPage() {
       setUsername(userObj.username || '');
       setEmail(userObj.email || '');
       setBio(userObj.bio || '');
-      setSelectedAvatar(userObj.profile_photo || userObj.avatar || DEFAULT_AVATAR);
+      setSelectedAvatar(getAvatarUrl(userObj));
     }
   }, [currentUser, userProfile]);
 
-  // Check if current avatar is custom (not default mascot)
-  const isCustomAvatar = selectedAvatar !== DEFAULT_AVATAR && Boolean(selectedAvatar);
+  // Check if current avatar is custom (not default initial avatar)
+  const isCustomAvatar = selectedAvatar && !selectedAvatar.includes('ui-avatars.com') && !selectedAvatar.includes('unsplash');
 
   // 1. Upload Photo from Internal Device Storage (opens cropper first)
   const handleImageUpload = (e) => {
@@ -108,11 +116,12 @@ export default function AccountSettingsPage() {
 
   // 2. Delete / Reset Profile Photo back to default mascot
   const handleDeletePhoto = () => {
-    setSelectedAvatar(DEFAULT_AVATAR);
+    const fallbackAvatar = getInitialAvatar(activeUser);
+    setSelectedAvatar(fallbackAvatar);
     if (updateUserProfile) {
-      updateUserProfile({ avatar: DEFAULT_AVATAR, profile_photo: DEFAULT_AVATAR });
+      updateUserProfile({ avatar: null, profile_photo: null });
     }
-    showToast('Foto profil berhasil dihapus dan dikembalikan ke foto bawaan.');
+    showToast('Foto profil berhasil dihapus dan dikembalikan ke inisial nama.');
   };
 
   // 3. Save Edit Information (Name, Username, Email, Bio)

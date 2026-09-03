@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateClassRequest;
 use App\Http\Resources\ClassResource;
 use App\Models\ClassMember;
 use App\Models\ClassModel;
+use App\Models\LogAktivitas;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -57,6 +58,15 @@ class ClassController extends Controller
             'role' => 'owner',
             'joined_at' => now(),
         ]);
+
+        try {
+            LogAktivitas::create([
+                'kelas_id' => $class->id,
+                'user_id' => $user->id,
+                'peran_user' => 'OWNER',
+                'deskripsi_aksi' => 'Membuat Ruang Kelas "' . $class->name . '"',
+            ]);
+        } catch (\Throwable $e) {}
 
         return response()->json([
             'status' => 'success',

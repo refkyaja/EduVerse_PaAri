@@ -197,7 +197,7 @@ export function AppStateProvider({ children }) {
 
   const findClass = (classId) => {
     if (!classId) return null;
-    const found = classList.find(c => c.id === classId || c.code === classId);
+    const found = classList.find(c => String(c.id) === String(classId) || c.code === String(classId));
     if (found) return found;
     if (String(classId).startsWith('cls-')) {
       return {
@@ -215,7 +215,7 @@ export function AppStateProvider({ children }) {
   const updateClassInfo = (classId, newDetails) => {
     if (!classId) return;
     setClassList(prev => {
-      const existingIdx = prev.findIndex(c => c.id === classId);
+      const existingIdx = prev.findIndex(c => String(c.id) === String(classId));
       let updated;
       if (existingIdx >= 0) {
         updated = [...prev];

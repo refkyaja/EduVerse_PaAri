@@ -34,6 +34,16 @@ class ClassMemberController extends Controller
             ], 403);
         }
 
+        // Ensure class owner is recorded in class_members
+        if (!ClassMember::where('class_id', $class->id)->where('user_id', $class->owner_id)->exists()) {
+            ClassMember::create([
+                'class_id' => $class->id,
+                'user_id' => $class->owner_id,
+                'role' => 'owner',
+                'joined_at' => $class->created_at ?? now(),
+            ]);
+        }
+
         $members = ClassMember::where('class_id', $class->id)
             ->with('user')
             ->get();
@@ -84,6 +94,15 @@ class ClassMemberController extends Controller
         }
 
         $targetMember->update(['role' => 'admin']);
+
+        try {
+            \App\Models\LogAktivitas::create([
+                'kelas_id' => $class->id,
+                'user_id' => $request->user()->id,
+                'peran_user' => 'OWNER',
+                'deskripsi_aksi' => 'Menjadikan ' . ($targetMember->user->name ?? 'Anggota') . ' sebagai Admin',
+            ]);
+        } catch (\Throwable $e) {}
 
         return response()->json([
             'status' => 'success',

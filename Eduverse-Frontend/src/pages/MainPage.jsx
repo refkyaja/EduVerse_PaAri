@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, LogIn, Search, BookOpen, Users, Globe, Lock, Sparkles, X, Info, ChevronDown } from 'lucide-react';
+import { Plus, LogIn, Search, BookOpen, Users, Globe, Lock, Sparkles, X, Info, ChevronDown, Loader2 } from 'lucide-react';
 import ClassCard from '../components/ClassCard';
 import CreateClassModal from '../components/CreateClassModal';
 import JoinClassModal from '../components/JoinClassModal';
@@ -13,11 +13,26 @@ export default function MainPage({ user, classes, userClasses = [], onCreateClas
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (fetchUserClasses) {
-      fetchUserClasses();
-    }
+    let isMounted = true;
+    const loadClasses = async () => {
+      setLoading(true);
+      if (fetchUserClasses) {
+        try {
+          await fetchUserClasses();
+        } catch (e) {
+          console.error("Failed to load classes:", e);
+        }
+      }
+      if (isMounted) {
+        setLoading(false);
+      }
+    };
+
+    loadClasses();
+    return () => { isMounted = false; };
   }, []);
 
   // Target classes uses classList from AppStateContext (synced from API)
@@ -133,21 +148,28 @@ export default function MainPage({ user, classes, userClasses = [], onCreateClas
           </span>
         </div>
 
-        {/* Responsive Grid */}
-        {filteredClasses.length > 0 ? (
+        {/* Responsive Grid with Loading Spinner & Empty State */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 bg-card/60 rounded-3xl border border-border/60 shadow-sm animate-pulse">
+            <Loader2 className="w-9 h-9 text-primary animate-spin" />
+            <p className="text-xs text-muted-foreground font-extrabold">Memuat daftar ruang kelas...</p>
+          </div>
+        ) : filteredClasses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredClasses.map(cls => (
               <ClassCard key={cls.id} cls={cls} />
             ))}
           </div>
         ) : (
-          <div className="bg-card rounded-3xl p-10 text-center space-y-3 shadow-sm">
-            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto" />
-            <h3 className="font-extrabold text-lg">Kelas Tidak Ditemukan</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+          <div className="bg-card/80 border border-border rounded-3xl p-10 text-center space-y-3 shadow-sm">
+            <BookOpen className="w-12 h-12 text-muted-foreground/60 mx-auto" />
+            <h3 className="font-extrabold text-lg text-foreground">
+              {searchQuery ? 'Kelas Tidak Ditemukan' : 'Belum Ada Kelas'}
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
               {searchQuery
                 ? `Tidak ada kelas yang cocok dengan kata kunci "${searchQuery}".`
-                : 'Kamu belum bergabung atau membuat kelas.'}
+                : 'Kamu belum memiliki kelas. Buat kelas baru atau bergabung menggunakan kode kelas.'}
             </p>
           </div>
         )}

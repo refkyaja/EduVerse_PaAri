@@ -17,11 +17,12 @@ export default function TopBar() {
   const isInsideClass = Boolean(classId);
   const activeClass = classId && findClass ? findClass(classId) : null;
   const classXp = isInsideClass && getClassXp ? getClassXp(classId) : 0;
-  const userAvatar = currentUser?.profile_photo ||
-                     currentUser?.avatar ||
-                     currentUser?.photo_url ||
-                     currentUser?.avatar_url ||
-                     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+  const userName = currentUser?.name || currentUser?.username || 'User';
+  const hasCustomPhoto = (currentUser?.profile_photo || currentUser?.avatar) && 
+                         !String(currentUser?.profile_photo || currentUser?.avatar).includes('unsplash');
+  const userAvatar = hasCustomPhoto
+    ? (currentUser?.profile_photo || currentUser?.avatar)
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=8b5cf6&color=ffffff&bold=true&size=256`;
 
   const isSettingsPage = currentPath === '/settings';
   const topRightImage = isSettingsPage ? '/assets/companion.png' : userAvatar;

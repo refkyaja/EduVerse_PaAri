@@ -17,13 +17,11 @@ export default function MainLayout({ children, user, onRoleChange }) {
     { label: 'Profil Saya', path: '/profile', Icon: User },
   ];
 
-  const userAvatar = currentUser?.profile_photo ||
-                     currentUser?.avatar ||
-                     currentUser?.photo_url ||
-                     currentUser?.avatar_url ||
-                     user?.profile_photo ||
-                     user?.avatar ||
-                     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150";
+  const userName = currentUser?.name || currentUser?.username || user?.name || 'User';
+  const rawPhoto = currentUser?.profile_photo || currentUser?.avatar || user?.profile_photo || user?.avatar;
+  const userAvatar = (rawPhoto && !String(rawPhoto).includes('unsplash'))
+    ? rawPhoto
+    : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=8b5cf6&color=ffffff&bold=true&size=256`;
 
   const isSettingsPage = currentPath === '/settings';
   const topRightImage = isSettingsPage ? '/assets/companion.png' : userAvatar;

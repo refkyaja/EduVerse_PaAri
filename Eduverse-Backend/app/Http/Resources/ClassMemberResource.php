@@ -14,16 +14,21 @@ class ClassMemberResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // Support both ClassMember pivot model or direct User model
-        $user = $this->resource instanceof \App\Models::class ? $this->resource : ($this->user ?? $this->resource);
+        $user = $this->user ?? $this->resource;
+        $name = $user->name ?? $user->username ?? 'Anggota Kelas';
+        $photo = (!empty($user->profile_photo) && !str_contains($user->profile_photo, 'unsplash'))
+            ? $user->profile_photo
+            : "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=8b5cf6&color=ffffff&bold=true&size=256";
 
         return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'username' => $user->username,
-            'profile_photo' => $user->profile_photo,
-            'role' => $this->pivot->role ?? $this->role ?? 'member',
-            'joined_at' => $this->pivot->joined_at ?? $this->joined_at ?? $this->created_at,
+            'id' => $user->id ?? $this->id,
+            'name' => $name,
+            'username' => $user->username ?? '',
+            'email' => $user->email ?? '',
+            'profile_photo' => $photo,
+            'avatar' => $photo,
+            'role' => $this->role ?? ($this->pivot->role ?? 'member'),
+            'joined_at' => $this->joined_at ?? ($this->pivot->joined_at ?? $this->created_at),
         ];
     }
 }

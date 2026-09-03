@@ -26,13 +26,15 @@ class UserResource extends JsonResource
             ? (int)round(($correctAnswers / $totalAnswers) * 100) 
             : ($examsCompleted > 0 ? (int)round($attempts->avg('skor')) : 0);
 
+        $avatarUrl = $this->profile_photo ? $this->profile_photo : "https://ui-avatars.com/api/?name=" . urlencode($this->name ?? $this->username ?? 'User') . "&background=8b5cf6&color=ffffff&bold=true&size=256";
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'username' => $this->username,
             'email' => $this->email,
-            'profile_photo' => $this->profile_photo,
-            'avatar' => $this->profile_photo,
+            'profile_photo' => $avatarUrl,
+            'avatar' => $avatarUrl,
             'bio' => $this->bio,
             'xp' => $totalXp,
             'exams_completed' => $examsCompleted,

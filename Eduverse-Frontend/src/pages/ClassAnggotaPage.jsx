@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Users, ShieldCheck, UserCheck, UserX, Loader2 } from 'lucide-react';
+import { Users, ShieldCheck, UserCheck, UserX, Loader2, Search, X } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 import { apiService } from '../services/apiService';
 import ConfirmModal from '../components/ConfirmModal';
@@ -11,6 +11,7 @@ export default function ClassAnggotaPage({ members = [], currentRole = 'member',
   const [memberToKick, setMemberToKick] = useState(null);
   const [internalMembers, setInternalMembers] = useState(members);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const isOwner = currentRole === 'owner';
   const isAdmin = currentRole === 'admin';
@@ -92,10 +93,20 @@ export default function ClassAnggotaPage({ members = [], currentRole = 'member',
   };
 
   const list = internalMembers.length > 0 ? internalMembers : (members || []);
+  const filteredList = list.filter(mem => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (mem.name && mem.name.toLowerCase().includes(q)) ||
+      (mem.username && mem.username.toLowerCase().includes(q)) ||
+      (mem.email && mem.email.toLowerCase().includes(q)) ||
+      (mem.role && mem.role.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between border-b border-border pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
         <div>
           <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 text-foreground">
             <Users className="w-5 h-5 text-primary shrink-0" />
@@ -107,11 +118,31 @@ export default function ClassAnggotaPage({ members = [], currentRole = 'member',
               : `Total ${list.length} anggota terdaftar dalam kelas ini.`}
           </p>
         </div>
+
+        {/* Live Search Input Bar */}
+        <div className="relative w-full sm:w-64 shrink-0">
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Cari anggota kelas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-card border border-border focus:border-primary rounded-xl pl-9 pr-8 py-1.5 text-xs font-bold text-foreground placeholder:text-muted-foreground/60 focus:outline-none transition-colors shadow-xs"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2.5">
-        {list.length > 0 ? (
-          list.map(mem => {
+        {filteredList.length > 0 ? (
+          filteredList.map(mem => {
             const isMemOwner = mem.role === 'Owner' || mem.role === 'owner';
             const isMemAdmin = mem.role === 'Admin' || mem.role === 'admin';
 
@@ -123,18 +154,15 @@ export default function ClassAnggotaPage({ members = [], currentRole = 'member',
                 {/* Member Info */}
                 <div className="flex items-center gap-3 min-w-0 flex-1 w-full sm:w-auto">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shrink-0 overflow-hidden shadow-xs">
-                    {mem.avatar ? (
-                      <img
-                        src={mem.avatar}
-                        alt={mem.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <span>{mem.name ? mem.name.charAt(0).toUpperCase() : 'U'}</span>
-                    )}
+                    <img
+                      src={
+                        (mem.avatar || mem.profile_photo) && !String(mem.avatar || mem.profile_photo).includes('unsplash')
+                          ? (mem.avatar || mem.profile_photo)
+                          : `https://ui-avatars.com/api/?name=${encodeURIComponent(mem.name || mem.username || 'User')}&background=8b5cf6&color=ffffff&bold=true&size=256`
+                      }
+                      alt={mem.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -189,7 +217,7 @@ export default function ClassAnggotaPage({ members = [], currentRole = 'member',
           })
         ) : (
           <div className="py-8 text-center text-xs text-muted-foreground italic bg-background/50 rounded-2xl border border-dashed border-border">
-            Belum ada data anggota kelas yang dapat ditampilkan.
+            {searchQuery ? `Tidak ada anggota yang cocok dengan "${searchQuery}"` : 'Belum ada data anggota kelas yang dapat ditampilkan.'}
           </div>
         )}
       </div>
