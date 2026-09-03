@@ -219,7 +219,12 @@ export function AppStateProvider({ children }) {
       let updated;
       if (existingIdx >= 0) {
         updated = [...prev];
-        updated[existingIdx] = { ...updated[existingIdx], ...newDetails };
+        const existingCode = updated[existingIdx].code;
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          ...newDetails,
+          code: newDetails.code || existingCode || String(classId).slice(-6).toUpperCase()
+        };
       } else {
         const fallbackClass = {
           id: classId,

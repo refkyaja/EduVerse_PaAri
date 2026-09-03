@@ -145,4 +145,71 @@ class MateriController extends Controller
             'data' => $versi
         ]);
     }
+
+    public function update(Request $request, $classId, $materiId)
+    {
+        $user = $request->user();
+        $class = ClassModel::findOrFail($classId);
+
+        $member = $class->classMembers()->where('user_id', $user->id)->first();
+        if (!$member || !in_array($member->role, ['owner', 'admin'])) {
+            return response()->json(['message' => 'Hanya Owner atau Admin yang dapat memperbarui materi.'], 403);
+        }
+
+        $materi = Materi::where('kelas_id', $classId)->where('id', $materiId)->firstOrFail();
+
+        $validated = $request->validate([
+            'judul' => 'sometimes|required|string|max:255',
+            'ringkasan' => 'nullable|string',
+            'isi' => 'required|string',
+            'mapel_id' => 'nullable|exists:mapel,id',
+        ]);
+
+        if (isset($validated['judul'])) {
+            $materi->judul = $validated['judul'];
+        }
+        if (array_key_exists('ringkasan', $validated)) {
+            $materi->ringkasan = $validated['ringkasan'];
+        }
+        if (array_key_exists('mapel_id', $validated)) {
+            $materi->mapel_id = $validated['mapel_id'];
+        }
+        $materi->save();
+
+        $maxVersi = MateriVersi::where('materi_id', $materi->id)->max('nomor_versi') ?: 1;
+        $nextVersi = $maxVersi + 1;
+
+        $status = ($member->role === 'owner') ? 'terverifikasi' : 'menunggu_verifikasi';
+
+        $versi = MateriVersi::create([
+            'materi_id' => $materi->id,
+            'nomor_versi' => $nextVersi,
+            'isi' => $validated['isi'],
+            'status' => $status,
+            'dibuat_oleh' => $user->id,
+            'ditinjau_oleh' => ($member->role === 'owner') ? $user->id : null,
+            'ditinjau_pada' => ($member->role === 'owner') ? now() : null,
+        ]);
+
+        if ($member->role === 'owner') {
+            $materi->update(['versi_aktif_id' => $versi->id]);
+        }
+
+        LogAktivitas::create([
+            'kelas_id' => $classId,
+            'user_id' => $user->id,
+            'peran_user' => strtoupper($member->role),
+            'deskripsi_aksi' => ($member->role === 'owner')
+                ? "Memperbarui materi \"{$materi->judul}\" ke versi {$nextVersi} (Terverifikasi)"
+                : "Mengajukan pembaruan materi \"{$materi->judul}\" ke versi {$nextVersi} (Menunggu Verifikasi)",
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => ($member->role === 'owner')
+                ? "Materi \"{$materi->judul}\" berhasil diperbarui ke versi {$nextVersi}!"
+                : "Pembaruan materi \"{$materi->judul}\" versi {$nextVersi} diajukan! Menunggu Verifikasi Owner.",
+            'data' => $materi->load(['versiAktif', 'versi.creator'])
+        ]);
+    }
 }

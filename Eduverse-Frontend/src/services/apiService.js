@@ -206,6 +206,19 @@ export const apiService = {
     return result.data;
   },
 
+  async updateMateri(classId, materiId, data) {
+    const res = await fetch(`${API_BASE_URL}/classes/${classId}/materi/${materiId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok || result.status !== 'success') {
+      throw new Error(result.message || 'Gagal memperbarui materi');
+    }
+    return result;
+  },
+
   async verifyMateriVersi(classId, versiId, data) {
     const res = await fetch(`${API_BASE_URL}/classes/${classId}/materi-versi/${versiId}/verify`, {
       method: 'POST',

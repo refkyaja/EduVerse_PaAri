@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Settings, ChevronRight, ChevronDown, ShieldCheck, Users, Swords, Flame, Trophy, Award, Zap, CheckCircle2, TrendingUp, AlertCircle, BookOpen, Target, Calendar, Plus, FolderPlus, FileText, Sparkles, RefreshCcw, History, Clock, UserCheck, KeyRound, Save, Trash2, Pencil, X, ShieldAlert, BarChart3, Copy, Check } from 'lucide-react';
+import { Settings, ChevronRight, ChevronDown, ShieldCheck, Users, Swords, Flame, Trophy, Award, Zap, CheckCircle2, TrendingUp, AlertCircle, BookOpen, Target, Calendar, Plus, FolderPlus, FileText, Sparkles, RefreshCcw, History, Clock, UserCheck, KeyRound, Save, Trash2, Pencil, X, ShieldAlert, BarChart3, Copy, Check, Eye } from 'lucide-react';
 import { useAppState } from '../context/AppStateContext';
 import { INITIAL_CLASSES } from '../data/mockData';
 import ClassSettingsModal from '../components/ClassSettingsModal';
@@ -24,6 +24,7 @@ export default function ProfilePage({ initialTab }) {
     if (path.includes('/add-quiz')) return 'add_quiz';
     if (path.includes('/verification')) return 'verification';
     if (path.includes('/members')) return 'members';
+    if (path.includes('/anggota')) return 'members_view';
     if (path.includes('/audit-log')) return 'audit_log';
     return searchParams.get('tab') || 'overview';
   };
@@ -44,13 +45,10 @@ export default function ProfilePage({ initialTab }) {
     setActiveTab(tabName);
     const targetClassId = routeClassId || activeClass?.id;
     if (targetClassId) {
-      if (routePath) {
-        navigate(`/class/${targetClassId}/${routePath}`);
-      } else {
-        navigate(`/class/${targetClassId}/profile`);
-      }
+      const targetUrl = routePath ? `/class/${targetClassId}/${routePath}` : `/class/${targetClassId}/profile`;
+      window.history.replaceState(null, '', targetUrl);
     } else {
-      navigate('/profile');
+      window.history.replaceState(null, '', '/profile');
     }
   };
 
@@ -63,9 +61,32 @@ export default function ProfilePage({ initialTab }) {
     if (activeClass) {
       setClassName(activeClass.name || 'Kelas Baru');
       setClassDesc(activeClass.description || '');
-      setClassCode(activeClass.code || String(activeClass.id).slice(-6).toUpperCase());
+      if (activeClass.code) {
+        setClassCode(activeClass.code);
+      }
     }
   }, [activeClass?.id, activeClass?.name, activeClass?.description, activeClass?.code]);
+
+  // DB Mapel & Materi Dynamic States
+  const [dbMapelList, setDbMapelList] = useState([
+    { id: 1, kode: 'PWP', nama: 'PWP (Pemrograman Web)', warna: 'from-indigo-500 to-purple-600' },
+    { id: 2, kode: 'IND', nama: 'Bahasa Indonesia', warna: 'from-blue-500 to-cyan-500' },
+    { id: 3, kode: 'MTK', nama: 'Matematika', warna: 'from-amber-500 to-orange-500' },
+    { id: 4, kode: 'PPAN', nama: 'Pendidikan Pancasila', warna: 'from-emerald-500 to-teal-500' }
+  ]);
+  const [isCreateSubjectOpen, setIsCreateSubjectOpen] = useState(false);
+
+  const [dbMateriList, setDbMateriList] = useState([]);
+  const [isCreateMaterialOpen, setIsCreateMaterialOpen] = useState(false);
+
+  // Edit Material State (Creating v2, v3...)
+  const [editingMaterial, setEditingMaterial] = useState(null);
+  const [editMaterialTitle, setEditMaterialTitle] = useState('');
+  const [editMaterialSubject, setEditMaterialSubject] = useState('PWP');
+  const [editMaterialContent, setEditMaterialContent] = useState('');
+
+  // Side-by-side Verification Preview State
+  const [verifyingMaterial, setVerifyingMaterial] = useState(null);
 
   // Form States
   const [newSubjectName, setNewSubjectName] = useState('');
@@ -81,18 +102,131 @@ export default function ProfilePage({ initialTab }) {
   const [newQuizSubject, setNewQuizSubject] = useState('PWP');
   const [quizInputMode, setQuizInputMode] = useState('manual');
 
-  const PROMPT_TEMPLATE = `Buatkan [jumlah] soal pilihan ganda tentang [topik], masing-masing dengan format persis seperti contoh ini:
+  const PROMPT_TEMPLATE = `Buatkan [jumlah] soal pilihan ganda tentang [topik] (bisa opsi A hingga E), masing-masing dengan format persis seperti contoh ini:
 
 1. Apa ibu kota Indonesia?
 A. Bandung
 B. Jakarta
 C. Surabaya
 D. Medan
+E. Yogyakarta
 Jawaban: B
 Pembahasan: Jakarta adalah ibu kota Indonesia
 
 Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jangan kasih judul atau intro di awal, dan jangan tambahkan teks lain di luar format itu.`;
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+
+  // Load Mapel from DB
+  useEffect(() => {
+    if (isApiClass && routeClassId) {
+      apiService.getMapel(routeClassId)
+        .then(list => {
+          if (Array.isArray(list) && list.length > 0) {
+            setDbMapelList(list.map(m => ({
+              id: m.id,
+              kode: m.kode || 'MAPEL',
+              nama: m.nama || 'Mata Pelajaran',
+              warna: m.warna || 'from-indigo-500 to-purple-600'
+            })));
+            setNewMaterialSubject(list[0].kode);
+            setNewQuizSubject(list[0].kode);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isApiClass, routeClassId]);
+
+  // Load Materi from DB
+  useEffect(() => {
+    if (isApiClass && routeClassId) {
+      apiService.getMateri(routeClassId)
+        .then(list => {
+          if (Array.isArray(list)) {
+            setDbMateriList(list.map(m => ({
+              id: m.id,
+              subject: m.mapel?.kode || 'MATERI',
+              subjectName: m.mapel?.nama || 'Mata Pelajaran',
+              title: m.judul,
+              content: m.versi_aktif?.isi || m.isi || '',
+              version: m.versi_aktif?.nomor_versi || 1,
+              status: m.versi_aktif?.status || 'terverifikasi',
+              createdAt: m.created_at ? new Date(m.created_at).toLocaleDateString() : 'Hari ini',
+              author: m.creator?.name || 'Owner',
+              versions: m.versi || []
+            })));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isApiClass, routeClassId]);
+
+  // Load Members from DB
+  const [dbMemberList, setDbMemberList] = useState([]);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (isApiClass && routeClassId) {
+        try {
+          const list = await apiService.getMembers(routeClassId);
+          if (Array.isArray(list) && list.length > 0) {
+            setDbMemberList(list.map(m => ({
+              id: m.id || m.user_id,
+              name: m.user?.name || m.name || 'Anggota Kelas',
+              username: m.user?.email ? `@${m.user.email.split('@')[0]}` : (m.username || '@user'),
+              email: m.user?.email || m.email,
+              role: m.role || 'member',
+              avatar: m.user?.avatar || m.avatar
+            })));
+            return;
+          }
+        } catch (e) {
+          console.error("Failed to load members from API:", e);
+        }
+      }
+      // Real member data from active class or API only (NO DUMMY DATA!)
+      if (activeClass && Array.isArray(activeClass.members) && activeClass.members.length > 0) {
+        setDbMemberList(activeClass.members);
+      } else {
+        setDbMemberList(currentUser ? [{
+          id: currentUser.id || 'usr-owner',
+          name: currentUser.name || activeClass?.ownerName || 'Pembuat Kelas',
+          username: currentUser.email ? `@${currentUser.email.split('@')[0]}` : `@${currentUser.username || 'owner'}`,
+          email: currentUser.email,
+          role: activeRole || 'owner',
+          avatar: currentUser.avatar
+        }] : []);
+      }
+    };
+    fetchMembers();
+  }, [isApiClass, routeClassId, activeClass, currentUser, activeRole]);
+
+  const handleToggleAdminMember = async (userId, newRole) => {
+    try {
+      if (isApiClass && routeClassId) {
+        if (newRole === 'Admin' || newRole === 'admin') {
+          await apiService.promoteMember(routeClassId, userId);
+        } else {
+          await apiService.demoteAdmin(routeClassId, userId);
+        }
+      }
+      setDbMemberList(prev => prev.map(mem => mem.id === userId ? { ...mem, role: newRole } : mem));
+      showToast(`Role anggota berhasil diubah menjadi ${newRole}`);
+    } catch (err) {
+      showToast(err.message || 'Gagal mengubah role anggota', 'error');
+    }
+  };
+
+  const handleKickMemberItem = async (userId) => {
+    try {
+      if (isApiClass && routeClassId) {
+        await apiService.kickMember(routeClassId, userId);
+      }
+      setDbMemberList(prev => prev.filter(mem => mem.id !== userId));
+      showToast('Anggota berhasil dikeluarkan dari kelas.');
+    } catch (err) {
+      showToast(err.message || 'Gagal mengeluarkan anggota', 'error');
+    }
+  };
 
   const [rawSoalText, setRawSoalText] = useState('');
   const [parsedSoalList, setParsedSoalList] = useState([]);
@@ -151,14 +285,31 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
         .then(list => {
           if (Array.isArray(list)) {
             const pending = list.filter(m => m.versi_aktif?.status === 'menunggu_verifikasi');
-            setPendingMaterials(pending.map(m => ({
-              id: m.id,
-              versiId: m.versi_aktif?.id,
-              subject: m.mapel?.kode || 'MATERI',
-              title: m.judul,
-              author: m.creator?.name || m.creator?.username || 'Admin',
-              createdAt: m.created_at ? new Date(m.created_at).toLocaleDateString() : 'Hari ini'
-            })));
+            setPendingMaterials(pending.map(m => {
+              const prevV = m.versi ? m.versi.find(v => v.nomor_versi === (m.versi_aktif?.nomor_versi || 1) - 1) : null;
+              return {
+                id: m.id,
+                versiId: m.versi_aktif?.id,
+                subject: m.mapel?.kode || 'MATERI',
+                title: m.judul,
+                author: m.creator?.name || m.creator?.username || 'Admin',
+                createdAt: m.created_at ? new Date(m.created_at).toLocaleDateString() : 'Hari ini',
+                prevVersion: prevV ? {
+                  version: prevV.nomor_versi,
+                  title: m.judul,
+                  content: prevV.isi,
+                  status: 'terverifikasi',
+                  author: 'Owner'
+                } : null,
+                newVersion: {
+                  version: m.versi_aktif?.nomor_versi || 1,
+                  title: m.judul,
+                  content: m.versi_aktif?.isi || '',
+                  status: 'menunggu_verifikasi',
+                  author: m.creator?.name || 'Admin'
+                }
+              };
+            }));
           }
         })
         .catch(() => {});
@@ -223,11 +374,16 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
   const handleSaveClassInfo = async (e) => {
     e.preventDefault();
     try {
+      let updatedRes;
       if (isApiClass && routeClassId) {
-        await apiService.updateClass(routeClassId, { name: className, description: classDesc });
+        updatedRes = await apiService.updateClass(routeClassId, { name: className, description: classDesc });
+      }
+      const finalCode = updatedRes?.code || classCode;
+      if (updatedRes?.code) {
+        setClassCode(updatedRes.code);
       }
       if (updateClassInfo) {
-        updateClassInfo(routeClassId || activeClass?.id, { name: className, description: classDesc });
+        updateClassInfo(routeClassId || activeClass?.id, { name: className, description: classDesc, code: finalCode });
       }
       const newLog = {
         id: Date.now(),
@@ -240,7 +396,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
       showToast("Informasi kelas berhasil diperbarui!");
     } catch (err) {
       if (updateClassInfo) {
-        updateClassInfo(routeClassId || activeClass?.id, { name: className, description: classDesc });
+        updateClassInfo(routeClassId || activeClass?.id, { name: className, description: classDesc, code: classCode });
       }
       showToast("Informasi kelas berhasil diperbarui!");
     }
@@ -282,13 +438,28 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
     if (!newSubjectName.trim() || !newSubjectCode.trim()) return;
 
     try {
+      let created;
       if (isApiClass && routeClassId) {
-        await apiService.createMapel(routeClassId, {
+        created = await apiService.createMapel(routeClassId, {
           nama: newSubjectName,
           kode: newSubjectCode,
           warna: newSubjectGradient
         });
       }
+      const newMapelObj = created ? {
+        id: created.id,
+        kode: created.kode || newSubjectCode.toUpperCase(),
+        nama: created.nama || newSubjectName,
+        warna: created.warna || newSubjectGradient
+      } : {
+        id: `mapel-${Date.now()}`,
+        nama: newSubjectName,
+        kode: newSubjectCode.toUpperCase(),
+        warna: newSubjectGradient
+      };
+
+      setDbMapelList(prev => [...prev, newMapelObj]);
+
       const newLog = {
         id: Date.now(),
         user: currentUser?.name || 'Refky Satria',
@@ -301,7 +472,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
       showToast(`Mata Pelajaran "${newSubjectName}" berhasil ditambahkan!`);
       setNewSubjectName('');
       setNewSubjectCode('');
-      setActiveTab('overview');
+      setIsCreateSubjectOpen(false);
     } catch (err) {
       showToast(err.message || "Gagal menambahkan mata pelajaran");
     }
@@ -313,28 +484,34 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
 
     const isOwner = activeRole === 'owner';
     try {
+      let createdApi;
       if (isApiClass && routeClassId) {
-        await apiService.createMateri(routeClassId, {
+        const selectedMapelObj = dbMapelList.find(m => m.kode === newMaterialSubject || m.id === newMaterialSubject);
+        createdApi = await apiService.createMateri(routeClassId, {
           judul: newMaterialTitle,
-          isi: newMaterialContent
+          isi: newMaterialContent,
+          mapel_id: selectedMapelObj?.id || null
         });
       }
 
       const materiObject = {
-        id: `mat-${Date.now()}`,
-        classId: routeClassId || activeClass?.id || (classList && classList[0]?.id) || 'global',
+        id: createdApi?.id || `mat-${Date.now()}`,
+        classId: routeClassId || activeClass?.id || 'global',
         subject: newMaterialSubject || 'PWP',
         subjectName: newMaterialSubject || 'Mata Pelajaran',
         title: newMaterialTitle.trim(),
         content: newMaterialContent.trim(),
         num: '01',
-        status: isOwner ? 'verified' : 'pending',
+        status: isOwner ? 'terverifikasi' : 'menunggu_verifikasi',
         version: 1,
+        author: currentUser?.name || 'Owner',
         createdAt: 'Baru saja'
       };
+
       if (addMateri) {
         addMateri(materiObject);
       }
+      setDbMateriList(prev => [materiObject, ...prev]);
 
       const newLog = {
         id: Date.now(),
@@ -355,9 +532,100 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
 
       setNewMaterialTitle('');
       setNewMaterialContent('');
-      setActiveTab('overview');
+      setIsCreateMaterialOpen(false);
     } catch (err) {
       showToast(err.message || "Gagal membuat materi");
+    }
+  };
+
+  const handleOpenEditMaterial = (materi) => {
+    setEditingMaterial(materi);
+    setEditMaterialTitle(materi.title || materi.judul || '');
+    setEditMaterialSubject(materi.subject || materi.mapel?.kode || 'PWP');
+    setEditMaterialContent(materi.content || materi.isi || '');
+    setIsCreateMaterialOpen(false);
+  };
+
+  const handleUpdateExistingMaterial = async (e) => {
+    e.preventDefault();
+    if (!editingMaterial || !editMaterialTitle.trim() || !editMaterialContent.trim()) return;
+
+    const isOwner = activeRole === 'owner';
+    const nextVer = (editingMaterial.version || 1) + 1;
+    const newStatus = isOwner ? 'terverifikasi' : 'menunggu_verifikasi';
+
+    try {
+      if (isApiClass && routeClassId) {
+        const selectedMapelObj = dbMapelList.find(m => m.kode === editMaterialSubject || m.id === editMaterialSubject);
+        await apiService.updateMateri(routeClassId, editingMaterial.id, {
+          judul: editMaterialTitle,
+          isi: editMaterialContent,
+          mapel_id: selectedMapelObj?.id || null
+        });
+      }
+
+      setDbMateriList(prev => prev.map(m => {
+        if (m.id === editingMaterial.id) {
+          return {
+            ...m,
+            title: editMaterialTitle.trim(),
+            subject: editMaterialSubject,
+            content: isOwner ? editMaterialContent.trim() : m.content,
+            version: isOwner ? nextVer : m.version,
+            status: isOwner ? 'terverifikasi' : m.status,
+          };
+        }
+        return m;
+      }));
+
+      if (!isOwner) {
+        setPendingMaterials(prev => [
+          {
+            id: editingMaterial.id,
+            materiId: editingMaterial.id,
+            subject: editMaterialSubject,
+            title: editMaterialTitle.trim(),
+            author: currentUser?.name || 'Admin',
+            createdAt: 'Baru saja',
+            prevVersion: {
+              version: editingMaterial.version || 1,
+              title: editingMaterial.title,
+              content: editingMaterial.content,
+              status: 'terverifikasi',
+              author: editingMaterial.author || 'Owner'
+            },
+            newVersion: {
+              version: nextVer,
+              title: editMaterialTitle.trim(),
+              content: editMaterialContent.trim(),
+              status: 'menunggu_verifikasi',
+              author: currentUser?.name || 'Admin'
+            }
+          },
+          ...prev
+        ]);
+      }
+
+      const newLog = {
+        id: Date.now(),
+        user: currentUser?.name || 'Admin',
+        role: activeRole.toUpperCase(),
+        action: isOwner
+          ? `Memperbarui materi "${editMaterialTitle}" ke v${nextVer} (Terverifikasi)`
+          : `Mengajukan pembaruan versi v${nextVer} untuk materi "${editMaterialTitle}" (Menunggu Verifikasi)`,
+        time: 'Baru saja'
+      };
+
+      setAuditLogs([newLog, ...auditLogs]);
+      showToast(
+        isOwner
+          ? `Materi "${editMaterialTitle}" berhasil diperbarui ke v${nextVer}!`
+          : `Versi v${nextVer} materi "${editMaterialTitle}" diajukan! Menunggu Verifikasi Owner.`
+      );
+
+      setEditingMaterial(null);
+    } catch (err) {
+      showToast(err.message || "Gagal memperbarui materi");
     }
   };
 
@@ -629,7 +897,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
     const filtered = editOpsi.slice(0, -1);
     setEditOpsi(filtered);
     if (editJawabanHuruf === lastOption.huruf) {
-      setEditJawabanHuruf('');
+      setEditJawabanHuruf(filtered[filtered.length - 1]?.huruf || 'A');
     }
   };
 
@@ -899,7 +1167,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
   }
 
   // Security Protection 2: Owner/Admin Role Protection
-  if (activeTab !== 'overview' && activeRole !== 'owner' && activeRole !== 'admin') {
+  if (activeTab !== 'overview' && activeTab !== 'members_view' && activeRole !== 'owner' && activeRole !== 'admin') {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 space-y-4 animate-fade-in max-w-md mx-auto py-12">
         <div className="w-16 h-16 rounded-3xl bg-warning/10 text-warning flex items-center justify-center shadow-inner">
@@ -1012,6 +1280,19 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
               <span className="flex-1">Ringkasan &amp; Statistik</span>
             </button>
 
+            {/* Menu 2: Anggota (Khusus untuk semua role) */}
+            <button
+              onClick={() => handleTabClick('members_view', 'anggota')}
+              className={`w-full p-3 rounded-2xl font-extrabold text-xs flex items-center gap-3 transition-all cursor-pointer text-left ${
+                activeTab === 'members_view'
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'bg-background hover:bg-muted text-foreground'
+              }`}
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              <span className="flex-1">Anggota Kelas</span>
+            </button>
+
             {/* Owner & Admin Management Menu List */}
             {canManage && (
               <div className="space-y-1">
@@ -1050,7 +1331,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                       }`}
                     >
                       <FolderPlus className="w-4 h-4 shrink-0" />
-                      <span className="flex-1">Tambah Mapel Baru</span>
+                      <span className="flex-1">Mapel</span>
                     </button>
 
                     <button
@@ -1062,7 +1343,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                       }`}
                     >
                       <FileText className="w-4 h-4 shrink-0" />
-                      <span className="flex-1">Tambah Materi</span>
+                      <span className="flex-1">Materi</span>
                     </button>
 
                     <button
@@ -1139,9 +1420,10 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                 <ChevronRight className="w-3.5 h-3.5 text-primary" />
                 <span className="text-primary font-extrabold uppercase tracking-wider">
                   {activeTab === 'add_quiz' && 'Tambah Kuis & Bank Soal'}
-                  {activeTab === 'add_material' && 'Tambah Materi'}
-                  {activeTab === 'add_subject' && 'Tambah Mapel Baru'}
+                  {activeTab === 'add_material' && 'Materi Pembelajaran'}
+                  {activeTab === 'add_subject' && 'Mata Pelajaran (Mapel)'}
                   {activeTab === 'settings' && 'Edit Informasi & Kode Kelas'}
+                  {activeTab === 'members_view' && 'Anggota Kelas'}
                   {activeTab === 'members' && 'Kelola Admin & Anggota'}
                   {activeTab === 'verification' && 'Verifikasi Materi Admin'}
                   {activeTab === 'audit_log' && 'Riwayat Log Aktivitas'}
@@ -1369,113 +1651,301 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
             </div>
           )}
 
-          {/* VIEW 3: FORM TAMBAH MAPEL BARU */}
+          {/* VIEW 3: DAFTAR MAPEL & FORM TAMBAH MAPEL */}
           {activeTab === 'add_subject' && canManage && (
-            <form onSubmit={handleCreateSubject} className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4 animate-fade-in">
-              <div className="border-b border-border pb-4">
-                <h3 className="font-extrabold text-lg flex items-center gap-2">
-                  <FolderPlus className="w-5 h-5 text-primary" /> Form Tambah Mata Pelajaran Baru
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">Tambahkan mata pelajaran baru untuk mengelompokkan materi di kelas {className}.</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-6 animate-fade-in">
+              {/* Header Bar Mapel */}
+              <div className="bg-card border border-border rounded-3xl p-5 shadow-sm flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">Nama Mata Pelajaran</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Fisika Terapan"
-                    value={newSubjectName}
-                    onChange={(e) => setNewSubjectName(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
-                  />
+                  <h3 className="font-extrabold text-lg flex items-center gap-2 text-foreground">
+                    <FolderPlus className="w-5 h-5 text-primary" /> Daftar Mata Pelajaran (Mapel)
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Kelola daftar mata pelajaran di kelas {className}.
+                  </p>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">Singkatan Kode Mapel</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength="5"
-                    placeholder="Contoh: FIS"
-                    value={newSubjectCode}
-                    onChange={(e) => setNewSubjectCode(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm uppercase font-mono focus:outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
                 <button
-                  type="submit"
-                  className="bg-primary text-primary-foreground font-extrabold px-6 py-2.5 rounded-xl text-xs shadow-glow flex items-center gap-1.5 hover:scale-105 transition-all"
+                  type="button"
+                  onClick={() => setIsCreateSubjectOpen(!isCreateSubjectOpen)}
+                  className="bg-primary text-primary-foreground font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 transition-all cursor-pointer"
                 >
-                  Simpan Mata Pelajaran Baru
+                  <Plus className="w-4 h-4" />
+                  <span>{isCreateSubjectOpen ? 'Tutup Form' : 'Tambah Mapel Baru'}</span>
                 </button>
               </div>
-            </form>
+
+              {/* Form Tambah Mapel (Toggleable) */}
+              {isCreateSubjectOpen && (
+                <form onSubmit={handleCreateSubject} className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4 animate-fade-in">
+                  <div className="border-b border-border pb-3">
+                    <h4 className="font-extrabold text-sm flex items-center gap-2 text-primary">
+                      Form Tambah Mata Pelajaran Baru
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground mb-1">Nama Mata Pelajaran</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Contoh: Fisika Terapan"
+                        value={newSubjectName}
+                        onChange={(e) => setNewSubjectName(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground mb-1">Singkatan Kode Mapel</label>
+                      <input
+                        type="text"
+                        required
+                        maxLength="5"
+                        placeholder="Contoh: FIS"
+                        value={newSubjectCode}
+                        onChange={(e) => setNewSubjectCode(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm uppercase font-mono focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreateSubjectOpen(false)}
+                      className="bg-muted text-muted-foreground font-extrabold px-4 py-2 rounded-xl text-xs hover:bg-muted/80 transition-all cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-primary text-primary-foreground font-extrabold px-6 py-2 rounded-xl text-xs shadow-glow flex items-center gap-1.5 hover:scale-105 transition-all cursor-pointer"
+                    >
+                      Simpan Mapel Baru
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Tabel Daftar Mapel */}
+              <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground font-extrabold uppercase tracking-wider text-[10px]">
+                        <th className="pb-3 px-3">Kode Mapel</th>
+                        <th className="pb-3 px-3">Nama Mata Pelajaran</th>
+                        <th className="pb-3 px-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {dbMapelList.map((mapel, idx) => (
+                        <tr key={mapel.id || idx} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-3 px-3">
+                            <span className="font-mono font-extrabold bg-primary/10 text-primary px-2.5 py-1 rounded-lg">
+                              {mapel.kode}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-bold text-foreground text-sm">
+                            {mapel.nama}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="bg-success/15 text-success font-extrabold text-[10px] px-2.5 py-0.5 rounded-full">
+                              Aktif
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* VIEW 4: FORM TAMBAH MATERI BARU */}
+          {/* VIEW 4: DAFTAR MATERI & KELOLA VERSI MATERI */}
           {activeTab === 'add_material' && canManage && (
-            <form onSubmit={handleCreateMaterial} className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4 animate-fade-in">
-              <div className="border-b border-border pb-4">
-                <h3 className="font-extrabold text-lg flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-primary" /> Form Tambah Materi Pembelajaran
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">Upload bab materi pembelajaran baru. (Dibuat oleh {activeRole.toUpperCase()})</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-6 animate-fade-in">
+              {/* Header Bar Materi */}
+              <div className="bg-card border border-border rounded-3xl p-5 shadow-sm flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">Pilih Mata Pelajaran</label>
-                  <select
-                    value={newMaterialSubject}
-                    onChange={(e) => setNewMaterialSubject(e.target.value)}
-                    className="w-full bg-background text-foreground border border-border rounded-xl px-3.5 py-2 text-xs sm:text-sm focus:outline-none focus:border-primary cursor-pointer shadow-sm"
-                  >
-                    <option value="PWP" className="bg-card text-foreground font-medium text-xs py-1">PWP (Pemrograman Web)</option>
-                    <option value="IND" className="bg-card text-foreground font-medium text-xs py-1">Bahasa Indonesia</option>
-                    <option value="MTK" className="bg-card text-foreground font-medium text-xs py-1">Matematika</option>
-                    <option value="PPAN" className="bg-card text-foreground font-medium text-xs py-1">Pendidikan Pancasila</option>
-                  </select>
+                  <h3 className="font-extrabold text-lg flex items-center gap-2 text-foreground">
+                    <FileText className="w-5 h-5 text-primary" /> Daftar Materi Pembelajaran
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Kelola materi pembelajaran dan sistem versioning (v1, v2, v3...).
+                  </p>
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-muted-foreground mb-1">Judul Bab Materi</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Arsitektur MVC pada Framework Laravel"
-                    value={newMaterialTitle}
-                    onChange={(e) => setNewMaterialTitle(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-muted-foreground mb-1">Isi Rangkuman / Poin Materi</label>
-                <textarea
-                  rows={5}
-                  required
-                  placeholder="Tuliskan rangkuman poin-poin materi di sini..."
-                  value={newMaterialContent}
-                  onChange={(e) => setNewMaterialContent(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
                 <button
-                  type="submit"
-                  className="bg-primary text-primary-foreground font-extrabold px-6 py-2.5 rounded-xl text-xs shadow-glow flex items-center gap-1.5 hover:scale-105 transition-all"
+                  type="button"
+                  onClick={() => {
+                    setEditingMaterial(null);
+                    setIsCreateMaterialOpen(!isCreateMaterialOpen);
+                  }}
+                  className="bg-primary text-primary-foreground font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm hover:scale-105 transition-all cursor-pointer"
                 >
-                  {isOwner ? 'Publikasikan (Terverifikasi)' : 'Ajukan (Menunggu Verifikasi)'}
+                  <Plus className="w-4 h-4" />
+                  <span>{isCreateMaterialOpen ? 'Tutup Form' : 'Tambah Materi Baru'}</span>
                 </button>
               </div>
-            </form>
+
+              {/* Form Create / Edit Material */}
+              {(isCreateMaterialOpen || editingMaterial) && (
+                <form
+                  onSubmit={editingMaterial ? handleUpdateExistingMaterial : handleCreateMaterial}
+                  className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4 animate-fade-in"
+                >
+                  <div className="border-b border-border pb-3 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-extrabold text-sm text-primary flex items-center gap-2">
+                        {editingMaterial ? (
+                          <span className="flex items-center gap-1.5 text-amber-500">
+                            <Pencil className="w-4 h-4" /> Edit Materi: {editingMaterial.title} (Draft Versi v{(editingMaterial.version || 1) + 1})
+                          </span>
+                        ) : (
+                          <span>Form Tambah Materi Pembelajaran (Versi v1)</span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {editingMaterial
+                          ? (isOwner ? 'Perubahan akan langsung diterbitkan (v' + ((editingMaterial.version || 1) + 1) + ')' : 'Perubahan akan diajukan ke Owner untuk verifikasi (v' + ((editingMaterial.version || 1) + 1) + ')')
+                          : (isOwner ? 'Materi baru langsung terverifikasi.' : 'Materi baru memerlukan verifikasi Owner.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground mb-1">Pilih Mata Pelajaran</label>
+                      <select
+                        value={editingMaterial ? editMaterialSubject : newMaterialSubject}
+                        onChange={(e) => editingMaterial ? setEditMaterialSubject(e.target.value) : setNewMaterialSubject(e.target.value)}
+                        className="w-full bg-background text-foreground border border-border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-primary cursor-pointer shadow-sm"
+                      >
+                        {dbMapelList.map(m => (
+                          <option key={m.id || m.kode} value={m.kode} className="bg-card text-foreground font-medium text-xs py-1">
+                            {m.kode} - {m.nama}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-muted-foreground mb-1">Judul Bab Materi</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Contoh: Arsitektur MVC pada Framework Laravel"
+                        value={editingMaterial ? editMaterialTitle : newMaterialTitle}
+                        onChange={(e) => editingMaterial ? setEditMaterialTitle(e.target.value) : setNewMaterialTitle(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-muted-foreground mb-1">Isi Rangkuman / Poin Materi</label>
+                    <textarea
+                      rows={5}
+                      required
+                      placeholder="Tuliskan rangkuman poin-poin materi di sini..."
+                      value={editingMaterial ? editMaterialContent : newMaterialContent}
+                      onChange={(e) => editingMaterial ? setEditMaterialContent(e.target.value) : setNewMaterialContent(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary resize-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreateMaterialOpen(false);
+                        setEditingMaterial(null);
+                      }}
+                      className="bg-muted text-muted-foreground font-extrabold px-4 py-2 rounded-xl text-xs hover:bg-muted/80 transition-all cursor-pointer"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-primary text-primary-foreground font-extrabold px-6 py-2.5 rounded-xl text-xs shadow-glow flex items-center gap-1.5 hover:scale-105 transition-all cursor-pointer"
+                    >
+                      {editingMaterial
+                        ? (isOwner ? `Simpan & Terbitkan v${(editingMaterial.version || 1) + 1}` : `Ajukan Pembaruan v${(editingMaterial.version || 1) + 1}`)
+                        : (isOwner ? 'Publikasikan (Terverifikasi)' : 'Ajukan (Menunggu Verifikasi)')}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Tabel Daftar Materi */}
+              <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground font-extrabold uppercase tracking-wider text-[10px]">
+                        <th className="pb-3 px-3">Mapel</th>
+                        <th className="pb-3 px-3">Judul Materi</th>
+                        <th className="pb-3 px-3">Versi</th>
+                        <th className="pb-3 px-3">Status</th>
+                        <th className="pb-3 px-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {dbMateriList.length > 0 ? (
+                        dbMateriList.map((materi, idx) => (
+                          <tr key={materi.id || idx} className="hover:bg-muted/30 transition-colors">
+                            <td className="py-3 px-3">
+                              <span className="font-mono font-extrabold bg-primary/10 text-primary px-2 py-0.5 rounded-md text-[11px]">
+                                {materi.subject}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <p className="font-bold text-foreground text-sm">{materi.title}</p>
+                              <p className="text-[11px] text-muted-foreground line-clamp-1">{materi.content}</p>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="bg-muted text-foreground font-extrabold font-mono text-[10px] px-2 py-0.5 rounded-full border border-border">
+                                v{materi.version || 1}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3">
+                              {materi.status === 'terverifikasi' || materi.status === 'verified' ? (
+                                <span className="bg-success/15 text-success font-extrabold text-[10px] px-2.5 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                                  <CheckCircle2 className="w-3 h-3" /> Terverifikasi
+                                </span>
+                              ) : (
+                                <span className="bg-warning/20 text-warning font-extrabold text-[10px] px-2.5 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                                  <Clock className="w-3 h-3" /> Menunggu Verifikasi
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditMaterial(materi)}
+                                className="bg-primary/10 hover:bg-primary/20 text-primary font-extrabold px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer inline-flex items-center gap-1"
+                                title="Edit & Ciptakan Versi Baru"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                                <span>Edit (v{(materi.version || 1) + 1})</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="5" className="py-6 text-center text-muted-foreground italic">
+                            Belum ada materi pembelajaran di kelas ini.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* VIEW 5: FORM TAMBAH KUIS & BANK SOAL BARU */}
@@ -1531,15 +2001,11 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                       onChange={(e) => setNewQuizSubject(e.target.value)}
                       className="w-full bg-card border border-border rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary cursor-pointer"
                     >
-                      <option value="IND">Bahasa Indonesia</option>
-                      <option value="PWP">PWP (Pemrograman Web)</option>
-                      <option value="MTK">Matematika</option>
-                      <option value="ING">Bahasa Inggris</option>
-                      <option value="PPAN">Pendidikan Pancasila</option>
-                      <option value="PABP">PABP</option>
-                      <option value="CLOUD">Cloud Computing</option>
-                      <option value="SJH">Sejarah Indonesia</option>
-                      <option value="PBT">Pemrograman Berbasis Teks</option>
+                      {dbMapelList.map(m => (
+                        <option key={m.id || m.kode} value={m.kode}>
+                          {m.kode} - {m.nama}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -1773,6 +2239,23 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                                         );
                                       })}
                                     </div>
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label className="block text-[11px] font-bold text-muted-foreground">Pilih Jawaban Benar (Menyesuaikan {editOpsi.length} Opsi)</label>
+                                    <select
+                                      value={editJawabanHuruf}
+                                      onChange={(e) => setEditJawabanHuruf(e.target.value)}
+                                      className="w-full bg-card border border-border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-primary text-foreground font-extrabold cursor-pointer"
+                                    >
+                                      <option value="" disabled>-- Pilih Jawaban Benar --</option>
+                                      {(editOpsi || []).map((o, i) => {
+                                        const h = o.huruf || String.fromCharCode(65 + i);
+                                        return (
+                                          <option key={h} value={h}>Opsi {h}</option>
+                                        );
+                                      })}
+                                    </select>
                                   </div>
 
                                   <div className="space-y-1">
@@ -2201,7 +2684,7 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
 
           {/* VIEW 6: PANEL VERIFIKASI MATERI ADMIN (KHUSUS OWNER) */}
           {activeTab === 'verification' && isOwner && (
-            <div className="bg-warning/10 border-2 border-warning/30 rounded-3xl p-6 space-y-4 animate-fade-in">
+            <div className="bg-warning/10 border-2 border-warning/30 rounded-3xl p-6 space-y-6 animate-fade-in">
               <div className="border-b border-warning/20 pb-3">
                 <h3 className="font-extrabold text-lg text-warning flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5" /> Panel Verifikasi Materi Admin (Khusus Owner)
@@ -2209,6 +2692,100 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                 <p className="text-xs text-muted-foreground mt-1">Setujui atau minta perbaikan materi yang diajukan oleh Admin kelas.</p>
               </div>
 
+              {/* Side-by-Side Preview Comparison Modal / Box */}
+              {verifyingMaterial && (
+                <div className="bg-card border border-border rounded-3xl p-6 shadow-xl space-y-4 animate-fade-in">
+                  <div className="flex items-center justify-between border-b border-border pb-3 flex-wrap gap-2">
+                    <div>
+                      <span className="text-[10px] font-extrabold bg-primary/10 text-primary px-2.5 py-1 rounded-md uppercase">
+                        {verifyingMaterial.subject}
+                      </span>
+                      <h4 className="font-extrabold text-base text-foreground mt-1">{verifyingMaterial.title}</h4>
+                      <p className="text-xs text-muted-foreground">Perbandingan Versi Sebelumnya vs Versi Baru Pengajuan Admin</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setVerifyingMaterial(null)}
+                      className="p-1.5 rounded-xl bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* 2-Column Grid Comparison */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* LEFT COLUMN: Versi Sebelumnya */}
+                    <div className="p-4 rounded-2xl border border-border bg-background space-y-3">
+                      <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                        <span className="font-extrabold text-xs text-muted-foreground flex items-center gap-1.5">
+                          <History className="w-4 h-4 text-muted-foreground" />
+                          Versi Sebelumnya ({verifyingMaterial.prevVersion?.version ? `v${verifyingMaterial.prevVersion.version}` : 'Versi Awal'})
+                        </span>
+                        <span className="bg-success/15 text-success font-extrabold text-[10px] px-2 py-0.5 rounded-full">
+                          Terverifikasi
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <p className="font-semibold">Pembuat: <strong>{verifyingMaterial.prevVersion?.author || 'Owner'}</strong></p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-card border border-border/50 text-xs leading-relaxed text-foreground min-h-[120px]">
+                        {verifyingMaterial.prevVersion?.content ? (
+                          <div dangerouslySetInnerHTML={{ __html: verifyingMaterial.prevVersion.content }} />
+                        ) : (
+                          <p className="italic text-muted-foreground">Ini adalah versi pertama (Belum ada versi sebelumnya untuk dibandingkan).</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: Versi Baru (Pengajuan Admin) */}
+                    <div className="p-4 rounded-2xl border-2 border-warning/40 bg-warning/5 space-y-3">
+                      <div className="flex items-center justify-between border-b border-warning/20 pb-2">
+                        <span className="font-extrabold text-xs text-warning flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-warning" />
+                          Versi Baru (v{verifyingMaterial.newVersion?.version || 2})
+                        </span>
+                        <span className="bg-warning/20 text-warning font-extrabold text-[10px] px-2 py-0.5 rounded-full">
+                          Menunggu Verifikasi
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <p className="font-semibold">Diajukan Oleh Admin: <strong>{verifyingMaterial.author}</strong></p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-card border border-warning/30 text-xs leading-relaxed text-foreground min-h-[120px]">
+                        {verifyingMaterial.newVersion?.content ? (
+                          <div dangerouslySetInnerHTML={{ __html: verifyingMaterial.newVersion.content }} />
+                        ) : (
+                          <p className="italic text-muted-foreground">(Isi rangkuman baru kosong)</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions inside Preview */}
+                  <div className="flex justify-end gap-3 pt-3 border-t border-border">
+                    <button
+                      onClick={() => {
+                        handleRejectPending(verifyingMaterial.id, verifyingMaterial.versiId, verifyingMaterial.title);
+                        setVerifyingMaterial(null);
+                      }}
+                      className="bg-muted hover:bg-danger/20 hover:text-danger text-muted-foreground font-bold px-4 py-2 rounded-xl text-xs transition-colors cursor-pointer"
+                    >
+                      Tolak Pengajuan
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleApprovePending(verifyingMaterial.id, verifyingMaterial.versiId, verifyingMaterial.title);
+                        setVerifyingMaterial(null);
+                      }}
+                      className="bg-success text-white font-extrabold px-5 py-2 rounded-xl text-xs flex items-center gap-1 shadow-sm hover:scale-105 transition-all cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Verifikasi &amp; Terbitkan (Setujui)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Pending List */}
               {pendingMaterials.length > 0 ? (
                 <div className="space-y-3">
                   {pendingMaterials.map(item => (
@@ -2221,7 +2798,13 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
                         <p className="text-xs text-muted-foreground mt-1">Diajukan oleh: <strong>{item.author}</strong> · {item.createdAt}</p>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                        <button
+                          onClick={() => setVerifyingMaterial(item)}
+                          className="bg-primary/10 text-primary font-extrabold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1 hover:bg-primary/20 transition-all cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Pratinjau &amp; Bandingkan Versi
+                        </button>
                         <button
                           onClick={() => handleRejectPending(item.id, item.versiId, item.title)}
                           className="bg-muted hover:bg-danger/20 hover:text-danger text-muted-foreground font-bold px-3.5 py-2 rounded-xl text-xs transition-colors cursor-pointer"
@@ -2281,17 +2864,25 @@ Pisahkan tiap soal dengan baris kosong. Jangan pakai markdown (bold/italic), jan
             </div>
           )}
 
-          {/* VIEW 8: KELOLA ADMIN & ANGGOTA KELAS (DESAIN IN-PLACE SIDEBAR) */}
+          {/* VIEW 8: ANGGOTA KELAS & KELOLA ADMIN */}
+          {activeTab === 'members_view' && (
+            <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4 animate-fade-in">
+              <ClassAnggotaPage
+                members={dbMemberList}
+                currentRole={activeRole}
+                isManagementMode={false}
+              />
+            </div>
+          )}
+
           {activeTab === 'members' && (
             <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-4 animate-fade-in">
               <ClassAnggotaPage
+                members={dbMemberList}
                 currentRole={activeRole}
-                onToggleAdmin={(id, newRole) => {
-                  showToast(`Role anggota diperbarui menjadi ${newRole}`);
-                }}
-                onKickMember={(id) => {
-                  showToast("Anggota telah dikeluarkan dari kelas.");
-                }}
+                isManagementMode={true}
+                onToggleAdmin={handleToggleAdminMember}
+                onKickMember={handleKickMemberItem}
               />
             </div>
           )}

@@ -135,9 +135,7 @@ export default function AppRoutes({
         path="/class/:classId/anggota"
         element={
           <ProtectedRoute>
-            <MobileLayout>
-              <ClassAnggotaPage members={members} currentRole={user.activeRole} onToggleAdmin={onToggleAdmin} onKickMember={onKickMember} />
-            </MobileLayout>
+            <ProfilePage initialTab="members_view" />
           </ProtectedRoute>
         }
       />

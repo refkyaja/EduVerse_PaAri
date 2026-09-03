@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/classes/{id}/materi', [MateriController::class, 'index']);
     Route::post('/classes/{id}/materi', [MateriController::class, 'store']);
     Route::get('/classes/{id}/materi/{materiId}', [MateriController::class, 'show']);
+    Route::put('/classes/{id}/materi/{materiId}', [MateriController::class, 'update']);
     Route::post('/classes/{id}/materi-versi/{versiId}/verify', [MateriController::class, 'verifyVersion']);
 
     // Bank Soal API
